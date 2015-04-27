@@ -2,7 +2,8 @@
   (:require [cljs.core.async :as a]
             [chord.client :refer [ws-ch]]
             [cljs-uuid-utils.core :as uuid]
-            [webui-aria.actions :refer [emit-version-received! emit-download-started!]])
+            [webui-aria.actions :refer [emit-version-received! emit-download-started!]]
+            [webui-aria.utils :refer [aria-endpoint]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 ;;; The API receives calls, like (start-download api
@@ -27,7 +28,7 @@
         send (a/chan)]
     (go
       (let [{:keys [ws-channel error]}
-            (a/<! (ws-ch "ws://localhost:6800/jsonrpc" {:format :json}))]
+            (a/<! (ws-ch aria-endpoint {:format :json}))]
         (if-not error
           (do (receive-messages! recv ws-channel)
               (send-messages! send ws-channel))
