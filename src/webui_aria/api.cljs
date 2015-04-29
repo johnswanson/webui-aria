@@ -1,9 +1,11 @@
 (ns webui-aria.api
   (:require [cljs.core.async :as a]
-            [chord.client :refer [ws-ch]]
             [cljs-uuid-utils.core :as uuid]
-            [webui-aria.actions :refer [emit-version-received! emit-download-started!]]
-            [webui-aria.utils :refer [aria-endpoint]])
+            [chord.client :refer [ws-ch]]
+            [webui-aria.actions :refer [emit-version-received! emit-download-init!]]
+            [webui-aria.utils :refer [aria-endpoint aria-gid hostname]]
+            [webui-aria.api.notification :as notification]
+            [webui-aria.api.response :as response])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 ;;; The API receives calls, like (start-download api
@@ -23,85 +25,84 @@
       (a/>! server-ch msg)
       (recur))))
 
-(defn api-response-channels []
+(defn message [server-response] (:message server-response))
+(defn error [server-response] (:error server-response))
+
+(defn connect [url]
   (let [recv (a/chan)
-        send (a/chan)]
+        send (a/chan)
+        [errs msgs] (a/split :error recv)
+        error-channel (a/chan 1 (map error))
+        _ (a/pipe errs error-channel)
+        message-channel (a/chan 1 (map message))
+        _ (a/pipe msgs message-channel)
+        [responses notifications] (a/split response/response? message-channel)]
     (go
       (let [{:keys [ws-channel error]}
-            (a/<! (ws-ch aria-endpoint {:format :json}))]
+            (a/<! (ws-ch url {:format :json}))]
         (if-not error
           (do (receive-messages! recv ws-channel)
               (send-messages! send ws-channel))
-          (print "Could not connect to server!"))))
-    [recv send]))
-
-(defn make-actions [action-ch recv]
-  (go-loop []
-    (let [msg (a/<! recv)]
-      (case msg
-        (print msg))
-      (recur))))
-
-(defn error? [server-response] (:error server-response))
-(defn message [server-response] (:message server-response))
-(defn error [server-response] (:error server-response))
-(defn split-off-errors [ch]
-  (let [[errs msgs] (a/split :error ch)
-        err-channel (a/chan 1 (map error))
-        msg-channel (a/chan 1 (map message))]
-    (a/pipe errs err-channel)
-    (a/pipe msgs msg-channel)
-    [err-channel msg-channel]))
-(defn p [api] (:pub api))
-
-(defn id [msg]
-  (msg "id"))
-
-(defn new-id []
-  (uuid/uuid-string (uuid/make-random-uuid)))
+          (throw (js/Error "Could not connect to server at " url)))))
+    {:error-channel error-channel
+     :responses (a/pub responses response/id)
+     :notifications (a/pub notifications notification/gid)
+     :send-channel send}))
 
 (defprotocol IApi
-  (init [this])
+  (start [this])
   (call [this action])
+  (params [this args])
   (action [this method params])
   (get-version [this])
   (start-download [this url]))
 
-(defrecord Api [config action-chan]
+(defn emission [action-chan type]
+  (fn [data] (({:get-version #(emit-version-received! action-chan data)
+                :init-download #(emit-download-init! action-chan data)} type) data)))
+
+(defn emit [api type ch & [data]]
+  (go (let [resp (a/<! ch)
+            f (emission (:action-chan api) type)]
+        (f (merge resp data))
+        (a/close! ch))))
+
+(defrecord Api [config action-chan responses notifications error-ch send-ch]
   IApi
-  (init [this]
-    (let [[recv send] (api-response-channels)
-          [errs msgs] (split-off-errors recv)]
+  (start [this]
+    (let [{:keys [error-channel
+                  responses
+                  notifications
+                  send-channel]} (connect (str "ws://" hostname ":6800/jsonrpc"))]
       (assoc this
-             :send-channel send
-             :pub (a/pub msgs id))))
+             :send-ch send-channel
+             :responses responses
+             :notifications notifications
+             :error-ch error-channel)))
   (call [this action]
-    (let [subbed (a/chan)]
-      (a/sub (:pub this) (:id action) subbed)
-      (a/put! (:send-channel this) action)
-      subbed))
-  (action [this method params]
+    (let [response (a/chan)]
+      (a/sub responses (:id action) response)
+      (a/put! send-ch action)
+      response))
+  (params [this args]
+    (if-let [token (:token config)]
+      (vec (concat [(str "token:" token)] args))
+      args))
+  (action [this method args]
     {:jsonrpc "2.0"
-     :id (new-id)
+     :id (uuid/uuid-string (uuid/make-random-uuid))
      :method (str "aria2." method)
-     :params (if-let [token (:token config)]
-               (vec (concat [(str "token:" token)] params))
-               params)})
+     :params (params this args)})
   (get-version [this]
     (let [act (action this "getVersion" [])
           ch (call this act)]
-      (go (let [resp (a/<! ch)]
-            (a/unsub (:pub this) (:id act) ch)
-            (emit-version-received! action-chan resp)))))
+      (emit this :get-version ch)))
   (start-download [this url]
-    (print (action this "addUri" [[url]]))
-    (let [act (action this "addUri" [[url]])
+    (let [act (action this "addUri" [[url] {"gid" (aria-gid)}])
           ch (call this act)]
-      (go (let [resp (a/<! ch)]
-            (a/unsub (:pub this) (:id act) ch)
-            (emit-download-started! action-chan resp))))))
+      (emit this :init-download ch {:url url}))))
 
 (defn make-api [config action-chan]
-  (init
+  (start
    (map->Api {:config config :action-chan action-chan})))
 
