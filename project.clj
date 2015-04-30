@@ -10,7 +10,8 @@
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [reagent "0.5.0"]
                  [jarohen/chord "0.6.0"]
-                 [com.lucasbradstreet/cljs-uuid-utils "1.0.1"]]
+                 [com.lucasbradstreet/cljs-uuid-utils "1.0.1"]
+                 [camel-snake-kebab "0.3.1"]]
 
 
   :plugins [[lein-cljsbuild "1.0.4"]

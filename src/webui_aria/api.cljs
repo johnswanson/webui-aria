@@ -2,7 +2,8 @@
   (:require [cljs.core.async :as a]
             [cljs-uuid-utils.core :as uuid]
             [chord.client :refer [ws-ch]]
-            [webui-aria.actions :refer [emit-version-received! emit-download-init!]]
+            [camel-snake-kebab.core :refer [->kebab-case]]
+            [webui-aria.actions :as actions]
             [webui-aria.utils :refer [aria-endpoint aria-gid hostname]]
             [webui-aria.api.notification :as notification]
             [webui-aria.api.response :as response])
@@ -46,7 +47,7 @@
           (throw (js/Error "Could not connect to server at " url)))))
     {:error-channel error-channel
      :responses (a/pub responses response/id)
-     :notifications (a/pub notifications notification/gid)
+     :notifications notifications
      :send-channel send}))
 
 (defprotocol IApi
@@ -55,17 +56,33 @@
   (params [this args])
   (action [this method params])
   (get-version [this])
-  (start-download [this url]))
+  (start-download [this url])
+  (get-status [this gid])
+  (get-active [this])
+  (get-stopped [this])
+  (get-waiting [this]))
 
-(defn emission [action-chan type]
-  (fn [data] (({:get-version #(emit-version-received! action-chan data)
-                :init-download #(emit-download-init! action-chan data)} type) data)))
+(defn listen-for-notifications! [notifications action-chan]
+  (go-loop []
+    (let [{method "method" [{gid "gid"}] "params"} (a/<! notifications)
+          emission (case method
+                     "aria2.onDownloadStart" actions/emit-download-started!
+                     "aria2.onDownloadPause" actions/emit-download-paused!
+                     "aria2.onDownloadStop" actions/emit-download-stopped!
+                     "aria2.onDownloadComplete" actions/emit-download-complete!
+                     "aria2.onDownloadError" actions/emit-download-error!
+                     "aria2.onBtDownloadComplete" actions/emit-bt-download-complete!
+                     #(throw (js/Error (str "Unknown method " method ", gid " %2))))]
+      (emission action-chan gid)
+      (recur))))
 
-(defn emit [api type ch & [data]]
-  (go (let [resp (a/<! ch)
-            f (emission (:action-chan api) type)]
-        (f (merge resp data))
-        (a/close! ch))))
+(defn ->kw-kebab [v]
+  (cond
+    (map? v) (into {} (map (fn [[k v]] [(->kebab-case (keyword k))
+                                        (->kw-kebab v)])
+                           v))
+    (coll? v) (map ->kw-kebab v)
+    :default v))
 
 (defrecord Api [config action-chan responses notifications error-ch send-ch]
   IApi
@@ -74,13 +91,14 @@
                   responses
                   notifications
                   send-channel]} (connect (str "ws://" hostname ":6800/jsonrpc"))]
+      (listen-for-notifications! notifications action-chan)
       (assoc this
              :send-ch send-channel
              :responses responses
              :notifications notifications
              :error-ch error-channel)))
   (call [this action]
-    (let [response (a/chan)]
+    (let [response (a/chan 1 (map ->kw-kebab))]
       (a/sub responses (:id action) response)
       (a/put! send-ch action)
       response))
@@ -96,11 +114,41 @@
   (get-version [this]
     (let [act (action this "getVersion" [])
           ch (call this act)]
-      (emit this :get-version ch)))
+      (go (let [resp (a/<! ch)]
+            (actions/emit-version-received! action-chan resp)))))
   (start-download [this url]
     (let [act (action this "addUri" [[url] {"gid" (aria-gid)}])
           ch (call this act)]
-      (emit this :init-download ch {:url url}))))
+      (go (let [{gid :result} (a/<! ch)]
+            (actions/emit-download-init! action-chan gid)
+            (a/close! ch)))))
+  (get-status [this gid]
+    (let [act (action this "tellStatus" [gid])
+          ch (call this act)]
+      (go (let [{status :result} (<! ch)]
+            (actions/emit-status-received! action-chan gid status)
+            (a/close! ch)))))
+  (get-active [this]
+    (let [act (action this "tellActive" [])
+          ch (call this act)]
+      (go (let [{statuses :result} (<! ch)]
+            (doseq [status statuses]
+              (actions/emit-status-received! action-chan (:gid status) status))
+            (a/close! ch)))))
+  (get-waiting [this]
+    (let [act (action this "tellWaiting" [])
+          ch (call this act)]
+      (go (let [{statuses :result} (<! ch)]
+            (doseq [status statuses]
+              (actions/emit-status-received! action-chan (:gid status) status))
+            (a/close! ch)))))
+  (get-stopped [this]
+    (let [act (action this "tellStopped" [])
+          ch (call this act)]
+      (go (let [{statuses :result} (<! ch)]
+            (doseq [status statuses]
+              (actions/emit-status-received! action-chan (:gid status) status))
+            (a/close! ch))))))
 
 (defn make-api [config action-chan]
   (start
