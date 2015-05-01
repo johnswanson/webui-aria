@@ -1,7 +1,8 @@
 (ns webui-aria.components.downloads
   (:require [cljs.core.async :as a]
-            [reagent.core :as reagent :refer [atom]]
-            [webui-aria.api :as api])
+            [reagent.core :as reagent :refer [atom cursor]]
+            [webui-aria.api :as api]
+            [webui-aria.components.speed-chart :as speed-chart])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (defn download [api state]
@@ -43,12 +44,14 @@
         (recur)))))
 
 (defn download-item []
-  (fn [{:keys [status gid] :as download}]
-    [:li
-     [:div
-      [:div.state status]
-      [:div (str download)]
-      [:div.gid gid]]]))
+  (fn [download-cursor]
+    (let [{:keys [status gid] :as download} @download-cursor]
+      [:li
+       [:div
+        [:div.state status]
+        [:div (str download)]
+        [speed-chart/speed-chart download-cursor]
+        [:div.gid gid]]])))
 
 (defn new-download [api]
   (let [state (atom nil)]
@@ -70,6 +73,6 @@
       [:div
        [:div [:p "Downloads"]
         [:ul
-         (for [dl (vals @downloads)]
-           ^{:key (:gid dl)} [download-item dl])]]
+         (for [gid (keys @downloads)]
+           ^{:key gid} [download-item (cursor downloads [gid])])]]
        [new-download api]])))

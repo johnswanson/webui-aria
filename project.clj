@@ -37,6 +37,7 @@
               :compiler {:output-to "resources/public/js/compiled/webui_aria.js"
                          :main webui-aria.core                         
                          :optimizations :advanced
+                         :externs ["externs/d3.ext.js"]
                          :pretty-print false}}]}
 
   :figwheel {
