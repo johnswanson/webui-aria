@@ -15,7 +15,18 @@
 
 
   :plugins [[lein-cljsbuild "1.0.4"]
+            [lein-scss "0.2.3"]
             [lein-figwheel "0.2.5-SNAPSHOT"]]
+
+  :scss {:builds
+         {:dev {:source-dir "resources/scss/"
+                :dest-dir "resources/public/css/"
+                :executable "sassc"
+                :args ["-m" "-I" "resources/scss/" "-t" "nested"]}
+          :min {:source-dir "resources/scss/"
+                :dest-dir "resources/public/css/"
+                :executable "sassc"
+                :args ["-I" "resources/scss/" "-t" "compressed"]}}}
 
   :source-paths ["src"]
 

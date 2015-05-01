@@ -12,3 +12,4 @@ pom.xml
 .lein-env
 .repl
 .nrepl-port
+/resources/public/css/style.css
