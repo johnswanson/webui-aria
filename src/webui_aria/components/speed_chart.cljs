@@ -1,5 +1,6 @@
 (ns webui-aria.components.speed-chart
-  (:require [reagent.core :as reagent]))
+  (:require [reagent.core :as reagent]
+            [webui-aria.utils :as utils]))
 
 (defn append-to-history! [speed history]
   (.push history speed)
@@ -12,24 +13,26 @@
                              new)))
   @old-max)
 
-(defn speed-chart [download-cursor]
-  (let [width 150 height 30
-        history (clj->js (repeat 100 0))
+(defn speed-chart [download-cursor k]
+  (let [count 500
+        history (clj->js (repeat count 0))
         old-max (atom 0)
-        transition-delay 100]
+        watcher-id (keyword (utils/rand-hex-str 16))]
     (reagent/create-class
      {:component-did-mount
       (fn [this]
-        (let [x (-> js/d3
+        (let [width (.-clientWidth (reagent/dom-node this))
+              height (.-clientHeight (reagent/dom-node this))
+              x (-> js/d3
                          .-scale
                          (.linear)
-                         (.domain #js [0 100])
+                         (.domain #js [0 count])
                          (.range (clj->js [-5 width])))
               y (-> js/d3
                     .-scale
                     (.linear)
                     (.range (clj->js [height 0]))
-                    (.domain (clj->js [0 100])))
+                    (.domain (clj->js [0 1])))
               update-y! #(-> y
                              (.domain (array 0 (get-max old-max %))))
               line (-> js/d3
@@ -37,7 +40,7 @@
                        (.line)
                        (.x (fn [_ i] (x i)))
                        (.y y)
-                       (.interpolate "linear"))]
+                       (.interpolate "basis"))]
           (-> js/d3
               (.select (reagent/dom-node this))
               (.selectAll "svg")
@@ -45,25 +48,19 @@
               (.attr "d" (line history)))
           (add-watch
            download-cursor
-           :watcher
-           (fn [_ _ _ {:keys [download-speed]}]
-             (when download-speed
-               (append-to-history! (js/parseInt download-speed) history)
-               (update-y! (js/parseInt download-speed))
+           watcher-id
+           (fn [_ _ _ download]
+             (when-let [speed (download k)]
+               (append-to-history! (js/parseInt speed) history)
+               (update-y! (js/parseInt speed))
                (-> js/d3
                    (.select (reagent/dom-node this))
                    (.selectAll "path")
                    (.data (clj->js [history]))
-                   (.attr "transform" (str "translate(" (x 1) ")"))
-                   (.attr "d" line)
-                   (.transition)
-                   (.ease "linear")
-                   (.duration transition-delay)
-                   (.attr "transform" (str "translate(" (x 0) ")"))))))))
+                   (.attr "d" line)))))))
       :component-will-unmount (fn [this]
-                                (remove-watch download-cursor :watcher))
-
-      :reagent-render (fn [download-cursor]
-                        [:div {:style {:width "150" :height "30"}}
-                         [:svg {:width "100%" :height "100%"}]])})))
+                                (remove-watch download-cursor watcher-id))
+      :reagent-render (fn [download-cursor k]
+                        [:div {:style {:width "100%" :height "2em"}}
+                         [:svg {:width "100%" :height "100%" :class (name k)}]])})))
 

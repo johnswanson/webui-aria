@@ -46,12 +46,22 @@
 
 (defn download-item []
   (fn [download-cursor]
-    (let [{:keys [status gid] :as download} @download-cursor]
+    (let [{:keys [status gid bittorrent] :as download} @download-cursor]
       [:div.row
-       [:div.state status]
-       [:div (str download)]
-       [speed-chart/speed-chart download-cursor]
-       [:div.gid gid]])))
+       [:div.col.s3 (or (-> bittorrent :info :name) "unknown")]
+       [:div.col.s1 status]
+       [:div.col.s4
+        [:div.row
+         [:div.col.s2.valign-wrapper
+          [:i.mdi-file-file-upload.medium.valign]]
+         [:div.col.s1 (:download-speed download)]
+         [:div.col.s9.download [speed-chart/speed-chart download-cursor :download-speed]]]]
+       [:div.col.s4
+        [:div.row
+         [:div.col.s2.valign-wrapper
+          [:i.mdi-file-file-upload.medium.valign]]
+         [:div.col.s1 (:upload-speed download)]
+         [:div.col.s9.upload [speed-chart/speed-chart download-cursor :upload-speed]]]]])))
 
 (defn new-download [api]
   (let [state (atom nil)

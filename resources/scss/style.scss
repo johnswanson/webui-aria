@@ -1,8 +1,19 @@
 @import "materialize.scss";
 
+
+svg.download-speed {
+		path {
+				stroke: $success-color;
+		}
+}
+
+svg.upload-speed {
+		path {
+				stroke: $error-color;
+		}
+}
+
 path {
-		stroke: steelblue;
 		stroke-width: 1;
 		fill: none;
 }
-
