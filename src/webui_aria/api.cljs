@@ -5,7 +5,6 @@
             [camel-snake-kebab.core :refer [->kebab-case]]
             [webui-aria.actions :as actions]
             [webui-aria.utils :refer [aria-endpoint aria-gid hostname]]
-            [webui-aria.api.notification :as notification]
             [webui-aria.api.response :as response])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
