@@ -778,6 +778,6 @@ $mdi-list-icons: (
 
 @each $mdi-icon-name, $mdi-icon-value in $mdi-list-icons {
   .#{$mdi-prefix}#{$mdi-icon-name}:before {
-    content: unicode($mdi-icon-value);
+    content: '"' + unicode($mdi-icon-value) + '"';
   }
 }
