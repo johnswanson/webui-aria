@@ -3,7 +3,6 @@
               [reagent.core :as reagent]
               [webui-aria.actions :as actions]
               [webui-aria.api :refer [make-api]]
-              [webui-aria.components.version :refer [version-component]]
               [webui-aria.components.downloads :refer [downloads-component]])
     (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
