@@ -1,6 +1,7 @@
 (ns webui-aria.components.downloads
   (:require [cljs.core.async :as a]
             [reagent.core :as reagent :refer [atom cursor]]
+            [webui-aria.utils :as utils]
             [webui-aria.api :as api]
             [webui-aria.components.speed-chart :as speed-chart])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
@@ -46,21 +47,32 @@
 (defn download-item []
   (fn [download-cursor]
     (let [{:keys [status gid] :as download} @download-cursor]
-      [:li
-       [:div
-        [:div.state status]
-        [:div (str download)]
-        [speed-chart/speed-chart download-cursor]
-        [:div.gid gid]]])))
+      [:div.row
+       [:div.state status]
+       [:div (str download)]
+       [speed-chart/speed-chart download-cursor]
+       [:div.gid gid]])))
 
 (defn new-download [api]
-  (let [state (atom nil)]
+  (let [state (atom nil)
+        id (utils/rand-hex-str 8)]
     (fn []
       [:div
-       [:input {:value (:url @state)
-                :on-change #(swap! state assoc :url (-> % .-target .-value))}
-        (:url @state)]
-       [:button {:on-click #(download api state)} "Start Download"]])))
+       [:div.row
+        [:div.col.s12
+         [:div.row
+          [:div.input-field.col.s6
+           [:input {:value (:url @state)
+                    :id id
+                    :placeholder "url"
+                    :on-change #(swap! state assoc :url (-> % .-target .-value))}
+            (:url @state)]]
+          [:div.col.s6]]]]
+       [:div.row
+        [:div.col.12
+         [:a.waves-effect.waves-light.btn
+          {:on-click #(download api state)}
+          "Start Download"]]]])))
 
 (defn downloads-component [api pub]
   (let [downloads (atom (array-map))]
@@ -71,8 +83,6 @@
     (api/get-stopped api)
     (fn []
       [:div
-       [:div [:p "Downloads"]
-        [:ul
-         (for [gid (keys @downloads)]
-           ^{:key gid} [download-item (cursor downloads [gid])])]]
+       (for [gid (keys @downloads)]
+         ^{:key gid} [download-item (cursor downloads [gid])])
        [new-download api]])))

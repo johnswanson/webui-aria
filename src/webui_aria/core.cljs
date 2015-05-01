@@ -3,7 +3,7 @@
               [reagent.core :as reagent]
               [webui-aria.actions :as actions]
               [webui-aria.api :refer [make-api]]
-              [webui-aria.components.downloads :refer [downloads-component]])
+              [webui-aria.components.app :refer [app]])
     (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (def action-chan (chan))
@@ -14,6 +14,6 @@
 (def p (:pub api))
 
 (reagent/render-component
- [downloads-component api action-pub]
+ [app api action-pub]
  (.-body js/document))
 
