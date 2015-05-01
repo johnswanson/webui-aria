@@ -33,7 +33,7 @@
                     (.range (clj->js [height 0]))
                     (.domain (clj->js [0 100])))
               update-y! #(-> y
-                             (.domain (clj->js [0 (get-max old-max %)])))
+                             (.domain (array 0 (get-max old-max %))))
               line (-> js/d3
                        .-svg
                        (.line)
