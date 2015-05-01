@@ -1,8 +1,6 @@
 (ns webui-aria.components.speed-chart
   (:require [reagent.core :as reagent]))
 
-(enable-console-print!)
-
 (defn append-to-history! [speed history]
   (.push history speed)
   (.shift history)
@@ -45,14 +43,11 @@
               (.selectAll "svg")
               (.append "svg:path")
               (.attr "d" (line history)))
-          (print "did mount")
-
           (add-watch
            download-cursor
            :watcher
            (fn [_ _ _ {:keys [download-speed]}]
              (when download-speed
-               (print history)
                (append-to-history! (js/parseInt download-speed) history)
                (update-y! (js/parseInt download-speed))
                (-> js/d3
