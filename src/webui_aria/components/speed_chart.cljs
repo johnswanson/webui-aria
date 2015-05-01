@@ -23,15 +23,17 @@
      {:component-did-mount
       (fn [this]
         (let [x (-> js/d3
-                    .-scale
-                    (.linear)
-                    (.domain #js [0 100])
-                    (.range (clj->js [-5 width])))
+                         .-scale
+                         (.linear)
+                         (.domain #js [0 100])
+                         (.range (clj->js [-5 width])))
               y (-> js/d3
                     .-scale
                     (.linear)
-                    (.domain (clj->js [0 (get-max old-max 0)]))
-                    (.range (clj->js [0 height])))
+                    (.range (clj->js [height 0]))
+                    (.domain (clj->js [0 100])))
+              update-y! #(-> y
+                             (.domain (clj->js [0 (get-max old-max %)])))
               line (-> js/d3
                        .-svg
                        (.line)
@@ -52,6 +54,7 @@
              (when download-speed
                (print history)
                (append-to-history! (js/parseInt download-speed) history)
+               (update-y! (js/parseInt download-speed))
                (-> js/d3
                    (.select (reagent/dom-node this))
                    (.selectAll "path")
