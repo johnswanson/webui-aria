@@ -74,7 +74,6 @@ div.new-download-form-container {
 		}
 		height: 400px;
 		transition: visibility 0s linear, height 0.2s ease, opacity 0.1s ease;
-
 }
 
 textarea.new-download-textarea {
@@ -84,4 +83,28 @@ textarea.new-download-textarea {
 div.filter-selectors {
 		@extend .z-depth-2;
 		background-color: white;
+}
+
+a.pause-btn {
+		background-color: $secondary-color-dark;
+		height: 100%;
+		i {
+				font-size: 1rem;
+		}
+}
+
+a.stop-btn {
+		background-color: $secondary-color-dark;
+		height: 100%;
+		i {
+				font-size: 1rem;
+		}
+}
+
+a.play-btn {
+		background-color: $secondary-color-dark;
+		height: 100%;
+		i {
+				font-size: 1rem;
+		}
 }

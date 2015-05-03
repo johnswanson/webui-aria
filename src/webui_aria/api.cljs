@@ -58,7 +58,10 @@
   (get-status [this gid])
   (get-active [this])
   (get-stopped [this])
-  (get-waiting [this]))
+  (get-waiting [this])
+  (pause-download [this gid])
+  (unpause-download [this gid])
+  (remove-download [this gid]))
 
 (defn listen-for-notifications! [notifications action-chan]
   (go-loop []
@@ -138,7 +141,16 @@
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
               (actions/emit-status-received! action-chan (:gid status) status))
-            (a/close! ch))))))
+            (a/close! ch)))))
+  (pause-download [this gid]
+    (let [act (action this "pause" [gid])]
+      (call this act)))
+  (unpause-download [this gid]
+    (let [act (action this "unpause" [gid])]
+      (call this act)))
+  (remove-download [this gid]
+    (let [act (action this "remove" [gid])]
+      (call this act))))
 
 (defn make-api [config action-chan]
   (start

@@ -13,7 +13,7 @@
     (api/start-download api url)))
 
 (defn listen-for-timeout! [api downloads]
-  (let [t 1500]
+  (let [t 1000]
     (go-loop [ch (a/timeout t)]
       (let [_ (<! ch)]
         (doseq [gid (keys @downloads)]
@@ -47,31 +47,59 @@
                                                  download)))
         (recur)))))
 
-(defn download-item [download-cursor]
-  (fn [download-cursor]
+(defn controls [download-cursor api]
+  (fn [download-cursor api]
+    (let [{:keys [status gid]} @download-cursor
+          display (case status
+                    "active"   {:play nil        :pause :enabled  :stop :enabled}
+                    "waiting"  {:play :disabled  :pause nil       :stop :disabled}
+                    "paused"   {:play :enabled   :pause nil       :stop :enabled}
+                    "error"    {:play :disabled  :pause nil       :stop :disabled}
+                    "complete" {:play nil        :pause :disabled :stop :disabled}
+                    "removed"  {:play :disabled  :pause nil       :stop :disabled})]
+      [:div
+       (when-let [pause-display (:pause display)]
+         [:a.btn.pause-btn {:class (name pause-display)
+                            :on-click #(api/pause-download api gid)}
+          [:i.mdi-av-pause]])
+       (when-let [play-display (:play display)]
+         [:a.btn.play-btn {:class (name play-display)
+                           :on-click #(api/unpause-download api gid)}
+          [:i.mdi-av-play-arrow]])
+       (when-let [stop-display (:stop display)]
+         [:a.btn.stop-btn {:class (name stop-display)
+                           :on-click #(api/remove-download api gid)}
+          [:i.mdi-av-stop]])])))
+
+(defn download-item [download-cursor api]
+  (fn [download-cursor api]
     (let [{:keys [bittorrent
                   completed-length
                   total-length
                   download-speed
-                  upload-speed] :as download} @download-cursor
+                  upload-speed
+                  files] :as download} @download-cursor
           pct-finished (* 100 (/ completed-length total-length))]
       [:div
        [:div.row
-        [:div.col.s10.offset-s1
-         [:div.progress
-          [:div.determinate {:style {:width (str pct-finished "%")}}]]]]
-       [:div.row
-        [:div.col.s4.offset-s1 (or (-> bittorrent :info :name) "unknown")]
-        [:div.col.s1
-         [:i.mdi-file-file-download.tiny]
-         [:span.download-speed (fmt/numBytesToString download-speed 0) "/s"]]
-        [:div.col.s1
-         [:span.download-amount (fmt/fileSize completed-length) " / " (fmt/fileSize total-length)]]
-        [:div.col.s1.download [speed-chart/speed-chart download-cursor :download-speed]]
-        [:div.col.s1.offset-s1
-         [:i.mdi-file-file-upload.tiny]
-         [:span (fmt/numBytesToString upload-speed) "/s"]]
-        [:div.col.s1.upload [speed-chart/speed-chart download-cursor :upload-speed]]]])))
+        [:div.col.s2
+         [controls download-cursor api]]
+        [:div.col.s10
+         [:div.col.s12
+          [:div.progress
+           [:div.determinate {:style {:width (str pct-finished "%")}}]]]
+         [:div.row
+          [:div.col.s4.offset-s1 (or (-> bittorrent :info :name) (-> files first :path))]
+          [:div.col.s1
+           [:i.mdi-file-file-download.tiny]
+           [:span.download-speed (fmt/numBytesToString download-speed 0) "/s"]]
+          [:div.col.s1
+           [:span.download-amount (fmt/fileSize completed-length) " / " (fmt/fileSize total-length)]]
+          [:div.col.s1.download [speed-chart/speed-chart download-cursor :download-speed]]
+          [:div.col.s1.offset-s1
+           [:i.mdi-file-file-upload.tiny]
+           [:span (fmt/numBytesToString upload-speed) "/s"]]
+          [:div.col.s1.upload [speed-chart/speed-chart download-cursor :upload-speed]]]]]])))
 
 (defn listen-for-adding-new-download! [pub state]
   (let [ch (a/chan)]
@@ -87,16 +115,16 @@
     (listen-for-adding-new-download! pub state)
     (fn [api pub]
       [:div.new-download-form-container.section.container.row
-       {:class (when-not (:viewing? @state) "hidden")}
+       {:class (if-not (:viewing? @state) "hidden" "shown")}
        [:div
         [:form {:on-submit #(-> % (.preventDefault))}
          [:div.col.s12
+          [:h5.center-align "URLs to download (one per line)"]
           [:div.input-field [:textarea.materialize-textarea.new-download-textarea
                              {:value (:urls @state)
                               :id id
                               :placeholder "urls"
-                              :on-change #(swap! state assoc :urls (-> % .-target .-value))}]
-           [:label {:for id} "URLs to download (one per line)"]]]
+                              :on-change #(swap! state assoc :urls (-> % .-target .-value))}]]]
          [:button.btn
           {:on-click #(do (swap! state (fn [{:keys [urls] :as state}]
                                          (download api urls)
@@ -126,4 +154,4 @@
          [new-download api pub]
          [:h3.center-align "Downloads"]
          (for [gid (keys filtered)]
-           ^{:key gid} [download-item (cursor downloads [gid])])]))))
+           ^{:key gid} [download-item (cursor downloads [gid]) api])]))))
