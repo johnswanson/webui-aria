@@ -45,7 +45,6 @@
        [filter-selector (cursor filters [:error]) :error actions]
        [filter-selector (cursor filters [:paused]) :paused actions]
        [filter-selector (cursor filters [:removed]) :removed actions]
-       [filter-selector (cursor filters [:removed]) :removed actions]
        [filter-selector (cursor filters [:linked]) :linked actions]])))
 
 (defn listen-for-filters! [filters pub]
