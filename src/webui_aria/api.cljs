@@ -2,9 +2,8 @@
   (:require [cljs.core.async :as a]
             [cljs-uuid-utils.core :as uuid]
             [chord.client :refer [ws-ch]]
-            [camel-snake-kebab.core :refer [->kebab-case]]
             [webui-aria.actions :as actions]
-            [webui-aria.utils :refer [aria-endpoint aria-gid hostname]]
+            [webui-aria.utils :refer [aria-endpoint aria-gid hostname] :as utils]
             [webui-aria.api.response :as response])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
@@ -75,14 +74,6 @@
       (emission action-chan gid)
       (recur))))
 
-(defn ->kw-kebab [v]
-  (cond
-    (map? v) (into {} (map (fn [[k v]] [(->kebab-case (keyword k))
-                                        (->kw-kebab v)])
-                           v))
-    (coll? v) (map ->kw-kebab v)
-    :default v))
-
 (defrecord Api [config action-chan responses notifications error-ch send-ch]
   IApi
   (start [this]
@@ -97,7 +88,7 @@
              :notifications notifications
              :error-ch error-channel)))
   (call [this action]
-    (let [response (a/chan 1 (map ->kw-kebab))]
+    (let [response (a/chan 1 (map utils/->kw-kebab))]
       (a/sub responses (:id action) response)
       (a/put! send-ch action)
       response))

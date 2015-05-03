@@ -33,3 +33,9 @@
 
 (defn emit-status-received! [ch gid status]
   (a/put! ch [:status-received (merge {:gid gid} status)]))
+
+(defn emit-adding-new-download! [ch]
+  (a/put! ch [:begin-viewing-download-form]))
+
+(defn emit-filter-toggled! [ch filter active?]
+  (a/put! ch [:filter-toggled {:filter filter :active? active?}]))

@@ -14,6 +14,6 @@
 (def p (:pub api))
 
 (reagent/render-component
- [app api action-pub]
+ [app api action-pub action-chan]
  (.-body js/document))
 

@@ -34,7 +34,7 @@
                     (.range (clj->js [height 0]))
                     (.domain (clj->js [0 1])))
               update-y! #(-> y
-                             (.domain (array 0 (get-max old-max %))))
+                             (.domain (array 0 (* (get-max old-max %) 1.3))))
               line (-> js/d3
                        .-svg
                        (.line)
@@ -61,6 +61,6 @@
       :component-will-unmount (fn [this]
                                 (remove-watch download-cursor watcher-id))
       :reagent-render (fn [download-cursor k]
-                        [:div {:style {:width "100%" :height "2em"}}
+                        [:div {:style {:width "100%" :height "1.5em"}}
                          [:svg {:width "100%" :height "100%" :class (name k)}]])})))
 

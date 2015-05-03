@@ -3,7 +3,8 @@
             [reagent.core :as reagent :refer [atom cursor]]
             [webui-aria.utils :as utils]
             [webui-aria.api :as api]
-            [webui-aria.components.speed-chart :as speed-chart])
+            [webui-aria.components.speed-chart :as speed-chart]
+            [goog.format :as fmt])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (defn download [api state]
@@ -44,24 +45,33 @@
                                                  download)))
         (recur)))))
 
-(defn download-item []
+(defn download-item [download-cursor]
   (fn [download-cursor]
-    (let [{:keys [status gid bittorrent] :as download} @download-cursor]
-      [:div.row
-       [:div.col.s3 (or (-> bittorrent :info :name) "unknown")]
-       [:div.col.s1 status]
-       [:div.col.s4
-        [:div.row
-         [:div.col.s2.valign-wrapper
-          [:i.mdi-file-file-upload.medium.valign]]
-         [:div.col.s1 (:download-speed download)]
-         [:div.col.s9.download [speed-chart/speed-chart download-cursor :download-speed]]]]
-       [:div.col.s4
-        [:div.row
-         [:div.col.s2.valign-wrapper
-          [:i.mdi-file-file-upload.medium.valign]]
-         [:div.col.s1 (:upload-speed download)]
-         [:div.col.s9.upload [speed-chart/speed-chart download-cursor :upload-speed]]]]])))
+    (let [{:keys [bittorrent
+                  followed-by
+                  completed-length
+                  total-length
+                  download-speed
+                  upload-speed] :as download} @download-cursor
+          pct-finished (* 100 (/ completed-length total-length))]
+      (when-not followed-by
+        [:div
+         [:div.row
+          [:div.col.s10.offset-s1
+           [:div.progress
+            [:div.determinate {:style {:width (str pct-finished "%")}}]]]]
+         [:div.row
+          [:div.col.s4.offset-s1 (or (-> bittorrent :info :name) "unknown")]
+          [:div.col.s1
+           [:i.mdi-file-file-download.tiny]
+           [:span.download-speed (fmt/numBytesToString download-speed 0) "/s"]]
+          [:div.col.s1
+           [:span.download-amount (fmt/fileSize completed-length) " / " (fmt/fileSize total-length)]]
+          [:div.col.s1.download [speed-chart/speed-chart download-cursor :download-speed]]
+          [:div.col.s1.offset-s1
+           [:i.mdi-file-file-upload.tiny]
+           [:span (fmt/numBytesToString upload-speed) "/s"]]
+          [:div.col.s1.upload [speed-chart/speed-chart download-cursor :upload-speed]]]]))))
 
 (defn new-download [api]
   (let [state (atom nil)
@@ -84,15 +94,21 @@
           {:on-click #(download api state)}
           "Start Download"]]]])))
 
-(defn downloads-component [api pub]
+(defn filter-set [filters-map]
+  (into #{} (map key (filter val filters-map))))
+
+(defn downloads-component [filters api pub]
   (let [downloads (atom (array-map))]
     (listen-for-notifications! pub downloads)
     (listen-for-timeout! api downloads)
     (api/get-active api)
     (api/get-waiting api)
     (api/get-stopped api)
-    (fn []
-      [:div
-       (for [gid (keys @downloads)]
-         ^{:key gid} [download-item (cursor downloads [gid])])
-       [new-download api]])))
+    (fn [filters api pub]
+      (let [s (filter-set @filters)
+            display? #(s (keyword (:status (val %))))
+            filtered (into {} (filter display? @downloads))]
+        [:div
+         (for [gid (keys filtered)]
+           ^{:key gid} [download-item (cursor downloads [gid])])
+         [new-download api]]))))

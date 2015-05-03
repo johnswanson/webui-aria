@@ -1,5 +1,33 @@
 @import "materialize.scss";
 
+html, body, div.entire-app {
+		height: 100%;
+}
+
+div.sidebar {
+		position: fixed;
+}
+
+div.row.content {
+		height: 100%;
+}
+
+a.brand-logo {
+		color: $secondary-color-light;
+}
+
+nav {
+		background-color: $primary-color-dark;
+}
+
+div.sidebar {
+		background-color: $primary-color;
+		height: 100%;
+}
+
+a.nav {
+		color: $secondary-color-light;
+}
 
 svg.download-speed {
 		path {
@@ -13,7 +41,20 @@ svg.upload-speed {
 		}
 }
 
+svg {
+		background-color: color("blue", "lighten-5");
+}
+
 path {
 		stroke-width: 1;
 		fill: none;
+}
+
+main {
+		height: 100%;
+		min-height: 100px;
+}
+
+html, body {
+		height: 100%;
 }
