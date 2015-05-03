@@ -38,15 +38,16 @@
 (defn filters-component [filters actions]
   (fn [filters actions]
     (let [{:keys [running? active?]} @filters]
-      [:div
-       [filter-selector (cursor filters [:running]) :running actions]
-       [filter-selector (cursor filters [:active]) :active actions]
-       [filter-selector (cursor filters [:waiting]) :waiting actions]
-       [filter-selector (cursor filters [:complete]) :complete actions]
-       [filter-selector (cursor filters [:error]) :error actions]
-       [filter-selector (cursor filters [:paused]) :paused actions]
-       [filter-selector (cursor filters [:removed]) :removed actions]
-       [filter-selector (cursor filters [:linked]) :linked actions]])))
+      [:div.section.container
+       [:h5 "Filters"]
+       [:div.section
+        [filter-selector (cursor filters [:active]) :active actions]
+        [filter-selector (cursor filters [:waiting]) :waiting actions]
+        [filter-selector (cursor filters [:paused]) :paused actions]
+        [filter-selector (cursor filters [:error]) :error actions]
+        [filter-selector (cursor filters [:complete]) :complete actions]
+        [filter-selector (cursor filters [:removed]) :removed actions]
+        [filter-selector (cursor filters [:linked]) :linked actions]]])))
 
 (defn listen-for-filters! [filters pub]
   (let [ch (a/chan)]
@@ -58,12 +59,11 @@
 
 (defn app [api pub actions]
   (fn [api pub actions]
-    (let [filters (atom {:running true
-                         :active true
+    (let [filters (atom {:active true
                          :waiting true
-                         :complete true
-                         :error true
                          :paused true
+                         :error true
+                         :complete true
                          :removed true
                          :linked false})]
       (listen-for-filters! filters pub)
@@ -79,7 +79,8 @@
            [:div.col.s12 [new-download-button actions]]]]
          [:div.container
           [:div.row.section
-           [:div.col.s12 [filters-component filters actions]]]]]
+           [:div.col.s12.filter-selectors
+            [filters-component filters actions]]]]]
         [:main
          [:div.col.s9.offset-s3.offset-m0.main
           [downloads/downloads-component filters api pub]]]]

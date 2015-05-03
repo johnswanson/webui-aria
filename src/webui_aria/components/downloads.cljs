@@ -8,8 +8,8 @@
             [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
-(defn download [api state]
-  (doseq [url (str/split (:urls @state) #"\n")]
+(defn download [api urls]
+  (doseq [url (str/split urls #"\n")]
     (api/start-download api url)))
 
 (defn listen-for-timeout! [api downloads]
@@ -86,24 +86,27 @@
         id (utils/rand-hex-str 8)]
     (listen-for-adding-new-download! pub state)
     (fn [api pub]
-      (when (:viewing? @state)
-        [:div
-         [:div.row
-          [:div.col.s12
-           [:div.row
-            [:div.input-field.col.s12
-             [:textarea.materialize-textarea {:value (:urls @state)
-                                              :id id
-                                              :placeholder "urls"
-                                              :on-change #(swap! state assoc :urls (-> % .-target .-value))}
-              (:urls @state)]]
-            [:div.col.s6]]]]
-         [:div.row
-          [:div.col.12
-           [:a.btn
-            {:on-click #(do (swap! state assoc :viewing? false)
-                            (download api state))}
-            "Start Download"]]]]))))
+      [:div.new-download-form-container.section.container.row
+       {:class (when-not (:viewing? @state) "hidden")}
+       [:div
+        [:form {:on-submit #(-> % (.preventDefault))}
+         [:div.col.s12
+          [:div.input-field [:textarea.materialize-textarea.new-download-textarea
+                             {:value (:urls @state)
+                              :id id
+                              :placeholder "urls"
+                              :on-change #(swap! state assoc :urls (-> % .-target .-value))}]
+           [:label {:for id} "URLs to download (one per line)"]]]
+         [:button.btn
+          {:on-click #(do (swap! state (fn [{:keys [urls] :as state}]
+                                         (download api urls)
+                                         (assoc state :viewing? false :urls ""))))}
+          [:i.mdi-file-file-download]
+          "Start Download"]
+         [:button.btn
+          {:on-click #(swap! state assoc :viewing? false)}
+          [:i.mdi-navigation-cancel]
+          "Cancel"]]]])))
 
 (defn filter-set [filters-map]
   (into #{} (map key (filter val filters-map))))
