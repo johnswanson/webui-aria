@@ -15,11 +15,12 @@
        [:ul.right
         [:li [:a.nav {:href "#"} "Configure"]]]]]]))
 
-(defn new-download-component [actions]
+(defn new-download-button [actions]
   (fn [actions]
-    [:a.btn
-     {:on-click #(actions/emit-adding-new-download! actions)}
-     "New Download"]))
+    [:p.center-align
+     [:a.btn
+      {:on-click #(actions/emit-adding-new-download! actions)}
+      "New Download"]]))
 
 (defn filter-selector [filter? filter-name actions]
   (let [id (utils/rand-hex-str 16)]
@@ -71,16 +72,15 @@
         [:div.navbar-fixed
          [nav-component api pub]]]
        [:div.row.content
-        [:div.col.s2.sidebar
-         [:div.container
+        [:div.col.s3.sidebar
+         [:div
           [:div.row.section
-           [:div.col.s12 [new-download-component actions]]]
-          [:div.row
-           [:div.col.s12 [new-download-component actions]]]]
+           [:div.col.s12 [new-download-button actions]]
+           [:div.col.s12 [new-download-button actions]]]]
          [:div.container
           [:div.row.section
            [:div.col.s12 [filters-component filters actions]]]]]
         [:main
-         [:div.col.s10.offset-s2.offset-m0.main
+         [:div.col.s9.offset-s3.offset-m0.main
           [downloads/downloads-component filters api pub]]]]
        [:footer.page-footer]])))

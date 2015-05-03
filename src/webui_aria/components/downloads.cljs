@@ -109,6 +109,7 @@
             display? #(s (keyword (:status (val %))))
             filtered (into {} (filter display? @downloads))]
         [:div
+         [:h3.center-align "Downloads"]
          (for [gid (keys filtered)]
            ^{:key gid} [download-item (cursor downloads [gid])])
          [new-download api]]))))
