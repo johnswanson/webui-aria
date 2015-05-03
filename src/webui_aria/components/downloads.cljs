@@ -80,26 +80,31 @@
                   upload-speed
                   files] :as download} @download-cursor
           pct-finished (* 100 (/ completed-length total-length))]
-      [:div
-       [:div.row
-        [:div.col.s2
-         [controls download-cursor api]]
-        [:div.col.s10
-         [:div.col.s12
-          [:div.progress
-           [:div.determinate {:style {:width (str pct-finished "%")}}]]]
-         [:div.row
-          [:div.col.s4.offset-s1 (or (-> bittorrent :info :name) (-> files first :path))]
-          [:div.col.s1
-           [:i.mdi-file-file-download.tiny]
-           [:span.download-speed (fmt/numBytesToString download-speed 0) "/s"]]
-          [:div.col.s1
-           [:span.download-amount (fmt/fileSize completed-length) " / " (fmt/fileSize total-length)]]
-          [:div.col.s1.download [speed-chart/speed-chart download-cursor :download-speed]]
-          [:div.col.s1.offset-s1
-           [:i.mdi-file-file-upload.tiny]
-           [:span (fmt/numBytesToString upload-speed) "/s"]]
-          [:div.col.s1.upload [speed-chart/speed-chart download-cursor :upload-speed]]]]]])))
+      [:tr
+       [:td {:rowSpan 2} [controls download-cursor api]]
+       [:td {:rowSpan 2} (or (-> bittorrent :info :name) (-> files first :path))]
+       [:td (fmt/numBytesToString download-speed 1) "/s"]
+       [:td (fmt/fileSize completed-length 2) " / " (fmt/fileSize total-length 2)]
+       [:td (fmt/numBytesToString upload-speed 1) "/s"]])))
+
+(defn progress-bar [download-cursor]
+  (fn [download-cursor]
+    (let [{:keys [completed-length total-length]} @download-cursor
+          pct-complete (* 100 (/ completed-length total-length))]
+      [:tr
+       [:td {:colSpan 5} [:div.progress {:style {:height "10px"}} [:div.determinate {:style {:width pct-complete}}]]]])))
+
+(defn download-second-row [download-cursor api]
+  (fn [download-cursor api]
+    (let [{:keys [completed-length
+                  total-length
+                  upload-speed
+                  download-speed
+                  files] :as download}
+          @download-cursor
+          pct-finished (* 100 (/ completed-length total-length))]
+      [:tr
+       [:td {:colSpan 3} [speed-chart/speed-chart download-cursor]]])))
 
 (defn listen-for-adding-new-download! [pub state]
   (let [ch (a/chan)]
@@ -153,5 +158,19 @@
         [:div
          [new-download api pub]
          [:h3.center-align "Downloads"]
-         (for [gid (keys filtered)]
-           ^{:key gid} [download-item (cursor downloads [gid]) api])]))))
+         [:table
+          [:thead [:tr
+                   [:th {:data-field "controls"} "Controls"]
+                   [:th {:data-field "file"} "File"]
+                   [:th {:data-field "download-speed"} "Download Speed"]
+                   [:th {:data-field "download-pct"} "Download Size"]
+                   [:th {:data-field "upload"} "Upload"]]]
+          [:tbody
+           (interleave
+            (for [gid (keys filtered)]
+              ^{:key (str gid "-bar")} [progress-bar (cursor downloads [gid])])
+            (for [gid (keys filtered)]
+              ^{:key (str gid "-row1")} [download-item (cursor downloads [gid]) api])
+            (for [gid (keys filtered)]
+              ^{:key (str gid "-row2")} [download-second-row (cursor downloads [gid]) api]))]]]))))
+

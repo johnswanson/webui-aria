@@ -29,14 +29,11 @@ a.nav {
 		color: $secondary-color-light;
 }
 
-svg.download-speed {
-		path {
+path {
+		&.down {
 				stroke: $success-color;
 		}
-}
-
-svg.upload-speed {
-		path {
+		&.up {
 				stroke: $error-color;
 		}
 }
