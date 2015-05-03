@@ -31,8 +31,11 @@
 (defn emit-bt-download-complete! [ch gid]
   (a/put! ch [:bt-download-complete {:gid gid}]))
 
-(defn emit-status-received! [ch gid status]
-  (a/put! ch [:status-received (merge {:gid gid} status)]))
+(defn emit-status-received! [ch gid {:keys [status followed-by] :as download}]
+  (let [download-status (if followed-by :linked status)]
+    (a/put! ch [:status-received (merge {:gid gid}
+                                        (assoc download
+                                               :status download-status))])))
 
 (defn emit-adding-new-download! [ch]
   (a/put! ch [:begin-viewing-download-form]))
