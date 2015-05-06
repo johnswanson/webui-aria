@@ -119,24 +119,27 @@
         id (utils/rand-hex-str 8)]
     (listen-for-adding-new-download! pub state)
     (fn [api pub]
-      [:div.new-download-form-container.section.container.row
+      [:div.modal-form.section.container.row
        {:class (if-not (:viewing? @state) "hidden" "shown")}
-       [:h5.center-align "URLs to download (one per line)"]
-       [:div.input-field [:textarea.materialize-textarea.new-download-textarea
-                          {:value (:urls @state)
-                           :id id
-                           :placeholder "urls"
-                           :on-change #(swap! state assoc :urls (-> % .-target .-value))}]]
-       [:button.btn
-        {:on-click #(do (swap! state (fn [{:keys [urls] :as state}]
-                                       (download api urls)
-                                       (assoc state :viewing? false :urls ""))))}
-        [:i.mdi-file-file-download]
-        "Start Download"]
-       [:button.btn
-        {:on-click #(swap! state assoc :viewing? false)}
-        [:i.mdi-navigation-cancel]
-        "Cancel"]])))
+       [:div.modal-content
+
+        [:h5.center-align "URLs to download (one per line)"]
+        [:div.input-field [:textarea.materialize-textarea.new-download-textarea
+                           {:value (:urls @state)
+                            :id id
+                            :placeholder "urls"
+                            :on-change #(swap! state assoc :urls (-> % .-target .-value))}]]
+        [:div.modal-footer
+         [:a.btn-flat
+          {:on-click #(do (swap! state (fn [{:keys [urls] :as state}]
+                                         (download api urls)
+                                         (assoc state :viewing? false :urls ""))))}
+          [:i.mdi-file-file-download]
+          "Start Download"]
+         [:a.btn-flat.right
+          {:on-click #(swap! state assoc :viewing? false)}
+          [:i.mdi-navigation-cancel]
+          "Cancel"]]]])))
 
 (defn filter-set [filters-map]
   (into #{} (map key (filter val filters-map))))
@@ -154,7 +157,7 @@
             filtered (into {} (filter display? @downloads))]
         [:div
          [new-download api pub]
-         [:h3.center-align "Downloads"]
+         [:h3 "Downloads"]
          [:div.downloads
           (map (fn [[gid _] even?]
                  ^{:key gid} [download-container even? (cursor downloads [gid]) api])

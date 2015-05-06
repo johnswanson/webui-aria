@@ -57,21 +57,14 @@ html, body {
 		height: 100%;
 }
 
-div.new-download-form-container {
+div.modal-form {
 		@extend .z-depth-5;
-		&.hidden {
-				height: 0px;
-				visibility: hidden;
-				* {
-						visibility: none;
-						opacity: 0;
-				}
+		@extend .modal;
+		&.shown {
+				display: block;
+				opacity: 1;
+				top: 10%;
 		}
-		* {
-				transition: opacity 0.5s ease;
-		}
-		height: 400px;
-		transition: visibility 0s linear, height 0.2s ease, opacity 0.1s ease;
 }
 
 textarea.new-download-textarea {
