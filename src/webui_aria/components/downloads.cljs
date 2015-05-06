@@ -115,25 +115,22 @@
     (fn [api pub]
       [:div.new-download-form-container.section.container.row
        {:class (if-not (:viewing? @state) "hidden" "shown")}
-       [:div
-        [:form {:on-submit #(-> % (.preventDefault))}
-         [:div.col.s12
-          [:h5.center-align "URLs to download (one per line)"]
-          [:div.input-field [:textarea.materialize-textarea.new-download-textarea
-                             {:value (:urls @state)
-                              :id id
-                              :placeholder "urls"
-                              :on-change #(swap! state assoc :urls (-> % .-target .-value))}]]]
-         [:button.btn
-          {:on-click #(do (swap! state (fn [{:keys [urls] :as state}]
-                                         (download api urls)
-                                         (assoc state :viewing? false :urls ""))))}
-          [:i.mdi-file-file-download]
-          "Start Download"]
-         [:button.btn
-          {:on-click #(swap! state assoc :viewing? false)}
-          [:i.mdi-navigation-cancel]
-          "Cancel"]]]])))
+       [:h5.center-align "URLs to download (one per line)"]
+       [:div.input-field [:textarea.materialize-textarea.new-download-textarea
+                          {:value (:urls @state)
+                           :id id
+                           :placeholder "urls"
+                           :on-change #(swap! state assoc :urls (-> % .-target .-value))}]]
+       [:button.btn
+        {:on-click #(do (swap! state (fn [{:keys [urls] :as state}]
+                                       (download api urls)
+                                       (assoc state :viewing? false :urls ""))))}
+        [:i.mdi-file-file-download]
+        "Start Download"]
+       [:button.btn
+        {:on-click #(swap! state assoc :viewing? false)}
+        [:i.mdi-navigation-cancel]
+        "Cancel"]])))
 
 (defn filter-set [filters-map]
   (into #{} (map key (filter val filters-map))))
