@@ -72,23 +72,29 @@
                            :on-click #(api/remove-download api gid)}
           [:i.mdi-av-stop]])])))
 
+(defn download-speed-component [cursor]
+  (let [{:keys [download-speed completed-length total-length]} @cursor]
+    [:div
+     [:i.mdi-file-file-download] (fmt/numBytesToString download-speed 1)
+     "/s (" (fmt/fileSize completed-length 2) " / " (fmt/fileSize total-length 2) ")"]))
+
+(defn upload-speed-component [cursor]
+  (let [{:keys [upload-speed upload-length total-length]} @cursor]
+    [:div
+     [:i.mdi-file-file-upload] (fmt/numBytesToString upload-speed 1)
+     "/s (" (fmt/fileSize upload-length 2) " / " (fmt/fileSize total-length 2) ")"]))
+
 (defn download-item [download-cursor api]
   (fn [download-cursor api]
-    (let [{:keys [bittorrent
-                  completed-length
-                  total-length
-                  download-speed
-                  upload-speed
-                  files] :as download} @download-cursor
-          pct-finished (* 100 (/ completed-length total-length))]
+    (let [{:keys [bittorrent files] :as download} @download-cursor]
       [:div.row.valign-wrapper.download-item
        [:div.col.s3.valign [controls download-cursor api]]
        [:div.col.s3.valign (or (-> bittorrent :info :name) (-> files first :path))]
        [:div.col.s6
         [:div.row
-         [:div.col.s3.offset-s2 (fmt/numBytesToString download-speed 1) "/s " [:i.mdi-file-file-download]]
-         [:div.col.s4 (fmt/fileSize completed-length 2) " / " (fmt/fileSize total-length 2)]
-         [:div.col.s3 (fmt/numBytesToString upload-speed 1) "/s " [:i.mdi-file-file-download]]]
+         [:div.col.s10.offset-s2 [download-speed-component download-cursor]]]
+        [:div.row
+         [:div.col.s10.offset-s2 [upload-speed-component download-cursor]]]
         [:div.row.container
          [:div.col.s12 [speed-chart/speed-chart download-cursor]]]]])))
 
