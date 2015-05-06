@@ -1,5 +1,6 @@
 (ns webui-aria.components.app
   (:require [webui-aria.components.downloads :as downloads]
+            [webui-aria.components.new-download-form :refer [new-download]]
             [webui-aria.actions :as actions]
             [webui-aria.utils :as utils]
             [reagent.core :as reagent :refer [atom cursor]]
@@ -83,5 +84,6 @@
             [filters-component filters actions]]]]]
         [:main
          [:div.col.s9.offset-s3.offset-m0.main
+          [new-download api pub]
           [downloads/downloads-component filters api pub]]]]
        [:footer.page-footer]])))

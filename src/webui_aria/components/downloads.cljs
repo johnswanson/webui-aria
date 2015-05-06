@@ -1,16 +1,11 @@
 (ns webui-aria.components.downloads
   (:require [cljs.core.async :as a]
             [reagent.core :as reagent :refer [atom cursor]]
+            [goog.format :as fmt]
             [webui-aria.utils :as utils]
             [webui-aria.api :as api]
-            [webui-aria.components.speed-chart :as speed-chart]
-            [goog.format :as fmt]
-            [clojure.string :as str])
+            [webui-aria.components.speed-chart :as speed-chart])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
-
-(defn download [api urls]
-  (doseq [url (str/split urls #"\n")]
-    (api/start-download api url)))
 
 (defn listen-for-timeout! [api downloads]
   (let [t 1000]
@@ -106,41 +101,6 @@
        [:div.determinate.download-completed-progress {:style {:width (str pct-complete "%")}}]
        [download-item download-cursor api]])))
 
-(defn listen-for-adding-new-download! [pub state]
-  (let [ch (a/chan)]
-    (a/sub pub :begin-viewing-download-form ch)
-    (go-loop []
-      (let [_ (a/<! ch)]
-        (swap! state assoc :viewing? true)
-        (recur)))))
-
-(defn new-download [api pub]
-  (let [state (atom nil)
-        id (utils/rand-hex-str 8)]
-    (listen-for-adding-new-download! pub state)
-    (fn [api pub]
-      [:div.modal-form.section.container.row
-       {:class (if-not (:viewing? @state) "hidden" "shown")}
-       [:div.modal-content
-
-        [:h5.center-align "URLs to download (one per line)"]
-        [:div.input-field [:textarea.materialize-textarea.new-download-textarea
-                           {:value (:urls @state)
-                            :id id
-                            :placeholder "urls"
-                            :on-change #(swap! state assoc :urls (-> % .-target .-value))}]]
-        [:div.modal-footer
-         [:a.btn-flat
-          {:on-click #(do (swap! state (fn [{:keys [urls] :as state}]
-                                         (download api urls)
-                                         (assoc state :viewing? false :urls ""))))}
-          [:i.mdi-file-file-download]
-          "Start Download"]
-         [:a.btn-flat.right
-          {:on-click #(swap! state assoc :viewing? false)}
-          [:i.mdi-navigation-cancel]
-          "Cancel"]]]])))
-
 (defn filter-set [filters-map]
   (into #{} (map key (filter val filters-map))))
 
@@ -156,7 +116,6 @@
             display? #(s (keyword (:status (val %))))
             filtered (into {} (filter display? @downloads))]
         [:div
-         [new-download api pub]
          [:h3 "Downloads"]
          [:div.downloads
           (map (fn [[gid _] even?]
