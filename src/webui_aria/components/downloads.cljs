@@ -56,7 +56,8 @@
                     "paused"   {:play :enabled   :pause nil       :stop :enabled}
                     "error"    {:play :disabled  :pause nil       :stop :disabled}
                     "complete" {:play nil        :pause :disabled :stop :disabled}
-                    "removed"  {:play :disabled  :pause nil       :stop :disabled})]
+                    "removed"  {:play :disabled  :pause nil       :stop :disabled}
+                    :linked    {:play :disabled  :pause nil       :stop :disabled})]
       [:div
        (when-let [pause-display (:pause display)]
          [:a.btn.pause-btn {:class (name pause-display)
@@ -80,31 +81,24 @@
                   upload-speed
                   files] :as download} @download-cursor
           pct-finished (* 100 (/ completed-length total-length))]
-      [:tr
-       [:td {:rowSpan 2} [controls download-cursor api]]
-       [:td {:rowSpan 2} (or (-> bittorrent :info :name) (-> files first :path))]
-       [:td (fmt/numBytesToString download-speed 1) "/s"]
-       [:td (fmt/fileSize completed-length 2) " / " (fmt/fileSize total-length 2)]
-       [:td (fmt/numBytesToString upload-speed 1) "/s"]])))
+      [:div.row.valign-wrapper.download-item
+       [:div.col.s3.valign [controls download-cursor api]]
+       [:div.col.s3.valign (or (-> bittorrent :info :name) (-> files first :path))]
+       [:div.col.s6
+        [:div.row
+         [:div.col.s3.offset-s2 (fmt/numBytesToString download-speed 1) "/s " [:i.mdi-file-file-download]]
+         [:div.col.s4 (fmt/fileSize completed-length 2) " / " (fmt/fileSize total-length 2)]
+         [:div.col.s3 (fmt/numBytesToString upload-speed 1) "/s " [:i.mdi-file-file-download]]]
+        [:div.row.container
+         [:div.col.s12 [speed-chart/speed-chart download-cursor]]]]])))
 
-(defn progress-bar [download-cursor]
-  (fn [download-cursor]
+(defn download-container [even? download-cursor api]
+  (fn [even? download-cursor api]
     (let [{:keys [completed-length total-length]} @download-cursor
-          pct-complete (* 100 (/ completed-length total-length))]
-      [:tr
-       [:td {:colSpan 5} [:div.progress {:style {:height "10px"}} [:div.determinate {:style {:width pct-complete}}]]]])))
-
-(defn download-second-row [download-cursor api]
-  (fn [download-cursor api]
-    (let [{:keys [completed-length
-                  total-length
-                  upload-speed
-                  download-speed
-                  files] :as download}
-          @download-cursor
-          pct-finished (* 100 (/ completed-length total-length))]
-      [:tr
-       [:td {:colSpan 3} [speed-chart/speed-chart download-cursor]]])))
+          pct-complete (if (not= total-length 0) (* 100 (/ completed-length total-length)) 0)]
+      [:div.download.progress.download-progress {:class (if even? "even" "odd")}
+       [:div.determinate.download-completed-progress {:style {:width (str pct-complete "%")}}]
+       [download-item download-cursor api]])))
 
 (defn listen-for-adding-new-download! [pub state]
   (let [ch (a/chan)]
@@ -158,19 +152,8 @@
         [:div
          [new-download api pub]
          [:h3.center-align "Downloads"]
-         [:table
-          [:thead [:tr
-                   [:th {:data-field "controls"} "Controls"]
-                   [:th {:data-field "file"} "File"]
-                   [:th {:data-field "download-speed"} "Download Speed"]
-                   [:th {:data-field "download-pct"} "Download Size"]
-                   [:th {:data-field "upload"} "Upload"]]]
-          [:tbody
-           (interleave
-            (for [gid (keys filtered)]
-              ^{:key (str gid "-bar")} [progress-bar (cursor downloads [gid])])
-            (for [gid (keys filtered)]
-              ^{:key (str gid "-row1")} [download-item (cursor downloads [gid]) api])
-            (for [gid (keys filtered)]
-              ^{:key (str gid "-row2")} [download-second-row (cursor downloads [gid]) api]))]]]))))
-
+         [:div.downloads
+          (map (fn [[gid _] even?]
+                 ^{:key gid} [download-container even? (cursor downloads [gid]) api])
+               filtered
+               (interleave (repeat true) (repeat false)))]]))))

@@ -32,7 +32,7 @@
   (a/put! ch [:bt-download-complete {:gid gid}]))
 
 (defn emit-status-received! [ch gid {:keys [status followed-by] :as download}]
-  (let [download-status (if followed-by :linked status)]
+  (let [download-status (if followed-by "linked" status)]
     (a/put! ch [:status-received (merge {:gid gid}
                                         (assoc download
                                                :status download-status))])))

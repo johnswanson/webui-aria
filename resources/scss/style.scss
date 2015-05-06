@@ -40,6 +40,7 @@ path {
 
 svg {
 		background-color: color("blue", "lighten-5");
+		@extend .z-depth-1;
 }
 
 path {
@@ -85,6 +86,7 @@ div.filter-selectors {
 a.pause-btn {
 		background-color: $secondary-color-dark;
 		height: 100%;
+		@extend .z-depth-1;
 		i {
 				font-size: 1rem;
 		}
@@ -93,6 +95,7 @@ a.pause-btn {
 a.stop-btn {
 		background-color: $secondary-color-dark;
 		height: 100%;
+		@extend .z-depth-1;
 		i {
 				font-size: 1rem;
 		}
@@ -101,7 +104,49 @@ a.stop-btn {
 a.play-btn {
 		background-color: $secondary-color-dark;
 		height: 100%;
+		@extend .z-depth-1;
 		i {
 				font-size: 1rem;
 		}
+}
+
+div.download-even {
+		background-color: $secondary-color;
+}
+div.download-odd {
+		background-color: $secondary-color-light;
+}
+
+div.download-item {
+		margin-bottom: 0;
+		z-index: 2;
+}
+
+div.download-progress {
+		height: auto;
+		margin-top: 0;
+		margin-bottom: 0;
+		@extend .z-depth-0;
+		&.even {
+				background-color: $primary-color;
+				div.download-completed-progress {
+						background-color: $primary-color-light;
+				}
+		}
+		&.odd {
+				background-color: $secondary-color;
+				div.download-completed-progress {
+						background-color: $secondary-color-light;
+				}
+		}
+		z-index: 0;
+}
+
+div.download-completed-progress {
+		@extend .z-depth-1;
+		z-index: 1;
+}
+
+div {
+		z-index: 3;
 }
