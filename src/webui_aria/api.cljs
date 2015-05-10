@@ -70,6 +70,16 @@
 (def send-channel-transducer
   (map (fn [val] [:ws-ch val])))
 
+(defn log-flow [channels incoming-channel outgoing-channel-key value]
+  (let [name-of-incoming-ch (fn [ch] (ffirst
+                                      (filter (fn [[k v]]
+                                                (= v ch))
+                                              channels)))]
+    (js/console.log (name (name-of-incoming-ch incoming-channel))
+                    " => "
+                    (name outgoing-channel-key)
+                    "[ " (clj->js value) " ]")))
+
 (defrecord Api [config channels ws-channel-atom responses action-ch]
   IApi
   (init [this action-ch]
@@ -82,19 +92,8 @@
            :notification-ch (a/chan 1 notification-channel-transducer)}
           response-pub      (a/pub (:response-ch channels) :id)]
       (go-loop []
-        (let [[[channel-key value] incoming-ch] (a/alts! (vals channels))
-              name-of-incoming-ch (fn [ch] (condp = ch
-                                             (:send-ch channels) :send-ch
-                                             (:ws-ch channels) :ws-ch
-                                             (:error-ch channels) :error-ch
-                                             (:message-ch channels) :message-ch
-                                             (:response-ch channels) :response-ch
-                                             (:notification-ch channels) :notification-ch))
-              outgoing-channel                  (cond
-                                                  (channels channel-key)     (channels channel-key)
-                                                  (= channel-key :action-ch) action-ch
-                                                  :else                      (channels :error-ch))]
-          (js/console.log (name (name-of-incoming-ch incoming-ch)) " => " (name channel-key) "[ " (clj->js value) " ]")
+        (let [[[channel-key value] incoming-ch] (a/alts! (vals channels))]
+          (log-flow channels incoming-ch channel-key value)
           (cond
             (channels channel-key)     (a/put! (channels channel-key) value)
             (= channel-key :action-ch) (a/put! action-ch value)
