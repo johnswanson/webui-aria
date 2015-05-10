@@ -3,6 +3,8 @@
             [webui-aria.components.new-download-form :refer [new-download]]
             [webui-aria.actions :as actions]
             [webui-aria.utils :as utils]
+            [webui-aria.api :as api]
+            [webui-aria.api-defaults :as api-defaults]
             [reagent.core :as reagent :refer [atom cursor]]
             [cljs.core.async :as a])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
@@ -58,32 +60,36 @@
         (swap! filters assoc filter active?)
         (recur)))))
 
-(defn app [api pub actions]
-  (fn [api pub actions]
-    (let [filters (atom {:active true
-                         :waiting true
-                         :paused true
-                         :error true
-                         :complete true
-                         :removed true
-                         :linked false})]
-      (listen-for-filters! filters pub)
-      [:div.entire-app
-       [:header
-        [:div.navbar-fixed
-         [nav-component api pub]]]
-       [:div.row.content
-        [:div.col.s3.sidebar
-         [:div
-          [:div.row.section
-           [:div.col.s12 [new-download-button actions]]
-           [:div.col.s12 [new-download-button actions]]]]
-         [:div.container
-          [:div.row.section
-           [:div.col.s12.filter-selectors
-            [filters-component filters actions]]]]]
-        [:main
-         [:div.col.s9.offset-s3.offset-m0.main
-          [new-download api pub]
-          [downloads/downloads-component filters api pub]]]]
-       [:footer.page-footer]])))
+(defn app [pub actions]
+  (let [api-config api-defaults/defaults
+        api (api/api api-config actions)]
+    (fn [pub actions]
+      (let [filters (atom {:active true
+                           :waiting true
+                           :paused true
+                           :error true
+                           :complete true
+                           :removed true
+                           :linked false})]
+        (listen-for-filters! filters pub)
+        [:div.entire-app
+         [:header
+          [:div.navbar-fixed
+           [nav-component api pub]]]
+         [:div.row.content
+          [:div.col.s3.sidebar
+           [:div
+            [:span.connection-state "hi"]]
+           [:div
+            [:div.row.section
+             [:div.col.s12 [new-download-button actions]]
+             [:div.col.s12 [new-download-button actions]]]]
+           [:div.container
+            [:div.row.section
+             [:div.col.s12.filter-selectors
+              [filters-component filters actions]]]]]
+          [:main
+           [:div.col.s9.offset-s3.offset-m0.main
+            [new-download api pub]
+            [downloads/downloads-component filters api pub]]]]
+         [:footer.page-footer]]))))

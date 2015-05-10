@@ -2,54 +2,18 @@
   (:require [cljs.core.async :as a]
             [cljs-uuid-utils.core :as uuid]
             [chord.client :refer [ws-ch]]
+            [cemerick.url :refer [map->URL]]
             [webui-aria.actions :as actions]
-            [webui-aria.utils :refer [aria-endpoint aria-gid hostname] :as utils]
+            [webui-aria.utils :refer
+             [aria-endpoint aria-gid hostname]
+             :as utils]
             [webui-aria.api.response :as response])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
-;;; The API receives calls, like (start-download api
-;;;                               {:url "http://example.com"})
-;;; The API listens for responses on the websocket, and creates actions from
-;;; them.
-
-(defn receive-messages! [out server-ch]
-  (go-loop []
-    (when-let [msg (a/<! server-ch)]
-      (a/>! out msg)
-      (recur))))
-
-(defn send-messages! [send-ch server-ch]
-  (go-loop []
-    (when-let [msg (a/<! send-ch)]
-      (a/>! server-ch msg)
-      (recur))))
-
-(defn message [server-response] (:message server-response))
-(defn error [server-response] (:error server-response))
-
-(defn connect [url]
-  (let [recv (a/chan)
-        send (a/chan)
-        [errs msgs] (a/split :error recv)
-        error-channel (a/chan 1 (map error))
-        _ (a/pipe errs error-channel)
-        message-channel (a/chan 1 (map message))
-        _ (a/pipe msgs message-channel)
-        [responses notifications] (a/split response/response? message-channel)]
-    (go
-      (let [{:keys [ws-channel error]}
-            (a/<! (ws-ch url {:format :json}))]
-        (if-not error
-          (do (receive-messages! recv ws-channel)
-              (send-messages! send ws-channel))
-          (throw (js/Error "Could not connect to server at " url)))))
-    {:error-channel error-channel
-     :responses (a/pub responses response/id)
-     :notifications notifications
-     :send-channel send}))
-
 (defprotocol IApi
+  (init [this action-ch])
   (start [this])
+  (stop [this])
   (call [this action])
   (params [this args])
   (action [this method params])
@@ -63,37 +27,111 @@
   (unpause-download [this gid])
   (remove-download [this gid]))
 
-(defn listen-for-notifications! [notifications action-chan]
-  (go-loop []
-    (let [{method "method" [{gid "gid"}] "params"} (a/<! notifications)
-          emission (case method
-                     "aria2.onDownloadStart" actions/emit-download-started!
-                     "aria2.onDownloadPause" actions/emit-download-paused!
-                     "aria2.onDownloadStop" actions/emit-download-stopped!
-                     "aria2.onDownloadComplete" actions/emit-download-complete!
-                     "aria2.onDownloadError" actions/emit-download-error!
-                     "aria2.onBtDownloadComplete" actions/emit-bt-download-complete!
-                     #(throw (js/Error (str "Unknown method " method ", gid " %2))))]
-      (emission action-chan gid)
-      (recur))))
+(defn ws-url [{:keys [hostname port secure? path]}]
+  (let [url (map->URL {:host hostname
+                       :port port
+                       :protocol (if secure? "wss" "ws")
+                       :path path})]
+    (str url)))
 
-(defrecord Api [config action-chan responses notifications error-ch send-ch]
+(def ws-channel-transducer
+  (map (fn [val]
+         (let [{:keys [error message] :as input} (utils/->kw-kebab val)]
+           (cond
+             error    [:error-ch error]
+             message  [:message-ch message]
+             :else    [:error-ch input])))))
+
+(def message-channel-transducer
+  (map (fn [{:keys [id method params result] :as message}]
+         (cond
+           id     [:response-ch     {:id id :result result}]
+           method [:notification-ch {:method method :params params}]
+           :else  [:error-ch message]))))
+
+(def notification-channel-transducer
+  (map (fn [{method :method [{:keys [gid]}] :params :as notification}]
+         (let [emission (case method
+                          "aria2.onDownloadStart" :download-started
+                          "aria2.onDownloadPause" :download-paused
+                          "aria2.onDownloadStop" :download-stopped
+                          "aria2.onDownloadComplete" :download-completed
+                          "aria2.onDownloadError" :download-errored
+                          "aria2.onBtDownloadComplete" :bt-download-completed
+                          nil)]
+           (if (and emission method gid)
+             [:action-ch (actions/from-notification emission gid)]
+             [:error-ch notification])))))
+
+(def error-channel-transducer
+  (map (fn [err]
+         [:action-ch (actions/from-error err)])))
+
+(def send-channel-transducer
+  (map (fn [val] [:ws-ch val])))
+
+(defrecord Api [config channels ws-channel-atom responses action-ch]
   IApi
-  (start [this]
-    (let [{:keys [error-channel
-                  responses
-                  notifications
-                  send-channel]} (connect (str "ws://" hostname ":6800/jsonrpc"))]
-      (listen-for-notifications! notifications action-chan)
+  (init [this action-ch]
+    (let [channels
+          {:send-ch         (a/chan 1 send-channel-transducer)
+           :ws-ch           (a/chan 1 ws-channel-transducer)
+           :error-ch        (a/chan 1 error-channel-transducer)
+           :message-ch      (a/chan 1 message-channel-transducer)
+           :response-ch     (a/chan)
+           :notification-ch (a/chan 1 notification-channel-transducer)}
+          response-pub      (a/pub (:response-ch channels) :id)]
+      (go-loop []
+        (let [[[channel-key value] incoming-ch] (a/alts! (vals channels))
+              name-of-incoming-ch (fn [ch] (condp = ch
+                                             (:send-ch channels) :send-ch
+                                             (:ws-ch channels) :ws-ch
+                                             (:error-ch channels) :error-ch
+                                             (:message-ch channels) :message-ch
+                                             (:response-ch channels) :response-ch
+                                             (:notification-ch channels) :notification-ch))
+              outgoing-channel                  (cond
+                                                  (channels channel-key)     (channels channel-key)
+                                                  (= channel-key :action-ch) action-ch
+                                                  :else                      (channels :error-ch))]
+          (js/console.log (name (name-of-incoming-ch incoming-ch)) " => " (name channel-key) "[ " (clj->js value) " ]")
+          (cond
+            (channels channel-key)     (a/put! (channels channel-key) value)
+            (= channel-key :action-ch) (a/put! action-ch value)
+            :else                      (a/put!
+                                        (channels :error-ch)
+                                        (str "invalid channel: "
+                                             (name channel-key)
+                                             ", from channel "
+                                             incoming-ch))))
+        (recur))
       (assoc this
-             :send-ch send-channel
-             :responses responses
-             :notifications notifications
-             :error-ch error-channel)))
+             :channels channels
+             :responses response-pub
+             :ws-channel-atom (atom nil)
+             :action-ch action-ch)))
+  (start [this]
+    (when-not @ws-channel-atom
+      (go
+        (let [url (ws-url config)
+              {:keys [ws-channel error]} (ws-ch url {:format :json})]
+          (if ws-channel
+            (swap! ws-channel-atom (fn [_]
+                                     (a/pipe ws-channel (channels :ws-ch) nil)
+                                     ws-channel))
+            (actions/emit-connection-failed!
+             action-ch
+             error)))))
+    this)
+  (stop [this]
+    (swap! ws-channel-atom (fn [ws-channel]
+                             (when ws-channel
+                               (a/close! ws-channel))
+                             nil)))
   (call [this action]
-    (let [response (a/chan 1 (map utils/->kw-kebab))]
+    (let [response (a/chan)]
       (a/sub responses (:id action) response)
-      (a/put! send-ch action)
+      (a/put! (-> channels :send-ch) action)
       response))
   (params [this args]
     (if-let [token (:token config)]
@@ -108,39 +146,40 @@
     (let [act (action this "getVersion" [])
           ch (call this act)]
       (go (let [resp (a/<! ch)]
-            (actions/emit-version-received! action-chan resp)))))
+            (actions/emit-version-received! (channels :action-ch) resp)
+            (a/close! ch)))))
   (start-download [this url]
     (let [act (action this "addUri" [[url] {"gid" (aria-gid)}])
           ch (call this act)]
       (go (let [{gid :result} (a/<! ch)]
-            (actions/emit-download-init! action-chan gid)
+            (actions/emit-download-init! (channels :action-ch) gid)
             (a/close! ch)))))
   (get-status [this gid]
     (let [act (action this "tellStatus" [gid])
           ch (call this act)]
       (go (let [{status :result} (<! ch)]
-            (actions/emit-status-received! action-chan gid status)
+            (actions/emit-status-received! (channels :action-ch) gid status)
             (a/close! ch)))))
   (get-active [this]
     (let [act (action this "tellActive" [])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (actions/emit-status-received! action-chan (:gid status) status))
+              (actions/emit-status-received! (channels :action-ch) (:gid status) status))
             (a/close! ch)))))
   (get-waiting [this]
     (let [act (action this "tellWaiting" [])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (actions/emit-status-received! action-chan (:gid status) status))
+              (actions/emit-status-received! (channels :action-ch) (:gid status) status))
             (a/close! ch)))))
   (get-stopped [this]
     (let [act (action this "tellStopped" [])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (actions/emit-status-received! action-chan (:gid status) status))
+              (actions/emit-status-received! (channels :action-ch) (:gid status) status))
             (a/close! ch)))))
   (pause-download [this gid]
     (let [act (action this "pause" [gid])]
@@ -152,7 +191,6 @@
     (let [act (action this "remove" [gid])]
       (call this act))))
 
-(defn make-api [config action-chan]
-  (start
-   (map->Api {:config config :action-chan action-chan})))
+(defn api [config action-ch]
+  (start (init (map->Api {:config config}) action-ch)))
 
