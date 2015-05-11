@@ -120,7 +120,8 @@
         (let [url (ws-url config)
               read-ch (a/chan)
               write-ch (a/chan)
-              _ (a/pipe read-ch (:ws-ch (:channels this)))
+              ;; nil means: don't close my channel if ws-channel goes away!
+              _ (a/pipe read-ch (:ws-ch (:channels this)) nil)
               _ (a/pipe (:ws-ch-write (:sinks this)) write-ch)
               {:keys [error]} (ws-ch url {:format :json
                                                      :read-ch read-ch
