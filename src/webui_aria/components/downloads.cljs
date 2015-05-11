@@ -108,9 +108,6 @@
   (let [downloads (atom (array-map))]
     (listen-for-notifications! pub downloads)
     (listen-for-timeout! api downloads)
-    (api/get-active api)
-    (api/get-waiting api)
-    (api/get-stopped api)
     (fn [filters api pub]
       (let [s (filter-set @filters)
             display? #(s (keyword (:status (val %))))

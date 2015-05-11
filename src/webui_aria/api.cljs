@@ -34,12 +34,15 @@
                        :path path})]
     (str url)))
 
+(defn parse [json]
+  (utils/->kw-kebab (js->clj (.parse js/JSON json))))
+
 (def ws-channel-transducer
   (map (fn [val]
          (let [{:keys [error message] :as input} (utils/->kw-kebab val)]
            (cond
-             error    [:error-ch error]
-             message  [:message-ch message]
+             error    [:error-ch (parse error)]
+             message  [:message-ch (parse message)]
              :else    [:error-ch input])))))
 
 (def message-channel-transducer
@@ -68,7 +71,7 @@
          [:action-ch (actions/from-error err)])))
 
 (def send-channel-transducer
-  (map (fn [val] [:ws-ch val])))
+  (map (fn [val] [:ws-ch-write (.stringify js/JSON (clj->js val))])))
 
 (defn log-flow [channels incoming-channel outgoing-channel-key value]
   (let [name-of-incoming-ch (fn [ch] (ffirst
@@ -90,22 +93,24 @@
            :message-ch      (a/chan 1 message-channel-transducer)
            :response-ch     (a/chan)
            :notification-ch (a/chan 1 notification-channel-transducer)}
+          sinks {:ws-ch-write (a/chan)
+                 :action-ch   action-ch}
           response-pub      (a/pub (:response-ch channels) :id)]
       (go-loop []
         (let [[[channel-key value] incoming-ch] (a/alts! (vals channels))]
           (log-flow channels incoming-ch channel-key value)
-          (cond
-            (channels channel-key)     (a/put! (channels channel-key) value)
-            (= channel-key :action-ch) (a/put! action-ch value)
-            :else                      (a/put!
-                                        (channels :error-ch)
-                                        (str "invalid channel: "
-                                             (name channel-key)
-                                             ", from channel "
-                                             incoming-ch))))
+          (if-let [ch (or (channels channel-key) (sinks channel-key))]
+            (a/put! ch value)
+            (a/put!
+             (channels :error-ch)
+             (str "invalid channel: "
+                  (name channel-key)
+                  ", from channel "
+                  incoming-ch))))
         (recur))
       (assoc this
              :channels channels
+             :sinks sinks
              :responses response-pub
              :ws-channel-atom (atom nil)
              :action-ch action-ch)))
@@ -113,7 +118,13 @@
     (when-not @ws-channel-atom
       (go
         (let [url (ws-url config)
-              {:keys [ws-channel error]} (ws-ch url {:format :json})]
+              read-ch (a/chan)
+              write-ch (a/chan)
+              _ (a/pipe read-ch (:ws-ch (:channels this)))
+              _ (a/pipe (:ws-ch-write (:sinks this)) write-ch)
+              {:keys [ws-channel error]} (ws-ch url {:format :json
+                                                     :read-ch read-ch
+                                                     :write-ch write-ch})]
           (if ws-channel
             (swap! ws-channel-atom (fn [_]
                                      (a/pipe ws-channel (channels :ws-ch) nil)
@@ -145,40 +156,40 @@
     (let [act (action this "getVersion" [])
           ch (call this act)]
       (go (let [resp (a/<! ch)]
-            (actions/emit-version-received! (channels :action-ch) resp)
+            (actions/emit-version-received! action-ch resp)
             (a/close! ch)))))
   (start-download [this url]
     (let [act (action this "addUri" [[url] {"gid" (aria-gid)}])
           ch (call this act)]
       (go (let [{gid :result} (a/<! ch)]
-            (actions/emit-download-init! (channels :action-ch) gid)
+            (actions/emit-download-init! action-ch gid)
             (a/close! ch)))))
   (get-status [this gid]
     (let [act (action this "tellStatus" [gid])
           ch (call this act)]
       (go (let [{status :result} (<! ch)]
-            (actions/emit-status-received! (channels :action-ch) gid status)
+            (actions/emit-status-received! action-ch gid status)
             (a/close! ch)))))
   (get-active [this]
     (let [act (action this "tellActive" [])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (actions/emit-status-received! (channels :action-ch) (:gid status) status))
+              (actions/emit-status-received! action-ch (:gid status) status))
             (a/close! ch)))))
   (get-waiting [this]
     (let [act (action this "tellWaiting" [])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (actions/emit-status-received! (channels :action-ch) (:gid status) status))
+              (actions/emit-status-received! action-ch (:gid status) status))
             (a/close! ch)))))
   (get-stopped [this]
     (let [act (action this "tellStopped" [])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (actions/emit-status-received! (channels :action-ch) (:gid status) status))
+              (actions/emit-status-received! action-ch (:gid status) status))
             (a/close! ch)))))
   (pause-download [this gid]
     (let [act (action this "pause" [gid])]
