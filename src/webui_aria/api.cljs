@@ -14,6 +14,7 @@
   (init [this action-ch])
   (start [this])
   (stop [this])
+  (restart [this])
   (call [this action])
   (params [this args])
   (action [this method params])
@@ -66,7 +67,7 @@
              [:action-ch (actions/from-notification emission gid)]
              [:error-ch notification])))))
 
-(def error-channel-transducer
+(defn error-channel-transducer [api]
   (map (fn [err]
          [:action-ch (actions/from-error err)])))
 
@@ -83,13 +84,13 @@
                     (name outgoing-channel-key)
                     "[ " (clj->js value) " ]")))
 
-(defrecord Api [config channels ws-channel-atom responses action-ch]
+(defrecord Api [config channels responses action-ch state]
   IApi
   (init [this action-ch]
     (let [channels
           {:send-ch         (a/chan 1 send-channel-transducer)
            :ws-ch           (a/chan 1 ws-channel-transducer)
-           :error-ch        (a/chan 1 error-channel-transducer)
+           :error-ch        (a/chan 1 (error-channel-transducer this))
            :message-ch      (a/chan 1 message-channel-transducer)
            :response-ch     (a/chan)
            :notification-ch (a/chan 1 notification-channel-transducer)}
@@ -112,10 +113,11 @@
              :channels channels
              :sinks sinks
              :responses response-pub
-             :ws-channel-atom (atom nil)
+             :state (atom {:status :initialized :ws-channel nil})
              :action-ch action-ch)))
   (start [this]
-    (when-not @ws-channel-atom
+    (when-not (= (:status @state) :connecting)
+      (swap! state assoc :status :connecting)
       (go
         (let [url (ws-url config)
               read-ch (a/chan)
@@ -126,14 +128,23 @@
               {:keys [error]} (ws-ch url {:read-ch read-ch
                                           :write-ch write-ch})]
           (if-not error
-            (reset! ws-channel-atom read-ch)
-            (js/console.log "failed to connect")))))
+            (swap! state assoc :ws-channel read-ch :status :connected)
+            (swap! state assoc :ws-channel nil :status :error)))))
     this)
   (stop [this]
-    (swap! ws-channel-atom (fn [ws-channel]
-                             (when ws-channel
-                               (a/close! ws-channel))
-                             nil)))
+    (swap! state (fn [{:keys [status ws-channel] :as state}]
+                   (case status
+                     :connecting (do (go (a/<! (a/timeout 100)))
+                                     state)
+                     :connected (do (a/close! ws-channel)
+                                    {:status :stopped})
+                     :error (do (when ws-channel (a/close! ws-channel))
+                                {:status :stopped})
+                     :stopped (do (when ws-channel (a/close! ws-channel))
+                                  {:status :stopped})))))
+  (restart [this]
+    (stop this)
+    (start this))
   (call [this action]
     (let [response (a/chan)]
       (a/sub responses (:id action) response)
@@ -198,5 +209,6 @@
       (call this act))))
 
 (defn api [config action-ch]
-  (start (init (map->Api {:config config}) action-ch)))
+  (let [a (init (map->Api {:config config}) action-ch)]
+    (start a)))
 
