@@ -122,16 +122,12 @@
               write-ch (a/chan)
               _ (a/pipe read-ch (:ws-ch (:channels this)))
               _ (a/pipe (:ws-ch-write (:sinks this)) write-ch)
-              {:keys [ws-channel error]} (ws-ch url {:format :json
+              {:keys [error]} (ws-ch url {:format :json
                                                      :read-ch read-ch
                                                      :write-ch write-ch})]
-          (if ws-channel
-            (swap! ws-channel-atom (fn [_]
-                                     (a/pipe ws-channel (channels :ws-ch) nil)
-                                     ws-channel))
-            (actions/emit-connection-failed!
-             action-ch
-             error)))))
+          (if-not error
+            (reset! ws-channel-atom read-ch)
+            (js/console.log "failed to connect")))))
     this)
   (stop [this]
     (swap! ws-channel-atom (fn [ws-channel]
