@@ -123,9 +123,8 @@
               ;; nil means: don't close my channel if ws-channel goes away!
               _ (a/pipe read-ch (:ws-ch (:channels this)) nil)
               _ (a/pipe (:ws-ch-write (:sinks this)) write-ch)
-              {:keys [error]} (ws-ch url {:format :json
-                                                     :read-ch read-ch
-                                                     :write-ch write-ch})]
+              {:keys [error]} (ws-ch url {:read-ch read-ch
+                                          :write-ch write-ch})]
           (if-not error
             (reset! ws-channel-atom read-ch)
             (js/console.log "failed to connect")))))
