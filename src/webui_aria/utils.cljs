@@ -1,5 +1,6 @@
 (ns webui-aria.utils
-  (:require [camel-snake-kebab.core :refer [->kebab-case]]))
+  (:require [camel-snake-kebab.core :refer [->kebab-case]]
+            [cljs.core.async :as a]))
 
 (def hex "0123456789abcdef")
 
@@ -21,3 +22,7 @@
                            v))
     (coll? v) (map ->kw-kebab v)
     :default v))
+
+(defn sub-multiple [pub ch & vals]
+  (doseq [val vals]
+    (a/sub pub val ch)))

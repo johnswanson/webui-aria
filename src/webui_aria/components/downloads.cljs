@@ -16,30 +16,23 @@
         (recur (a/timeout t))))))
 
 (defn listen-for-notifications! [pub downloads]
-  (let [ch (a/chan)]
-    (a/sub pub :download-init ch)
-    (a/sub pub :download-started ch)
-    (a/sub pub :download-paused ch)
-    (a/sub pub :download-stopped ch)
-    (a/sub pub :download-complete ch)
-    (a/sub pub :download-error ch)
-    (a/sub pub :bt-download-complete ch)
-    (a/sub pub :status-received ch)
+  (let [ch (a/chan)
+        action->status {:download-init        (fn [dl] "waiting")
+                        :download-started     (fn [dl] "active")
+                        :download-paused      (fn [dl] "paused")
+                        :download-error       (fn [dl] "error")
+                        :download-stopped     (fn [dl] "complete")
+                        :download-complete    (fn [dl] "complete")
+                        :bt-download-complete (fn [dl] "complete")
+                        :status-received      (fn [dl] (:status dl))}]
+    (apply utils/sub-multiple pub ch (keys action->status))
     (go-loop []
       (let [[action-type {:keys [gid] :as download}] (<! ch)
-            download-state (case action-type
-                             :download-init "waiting"
-                             :download-started "active"
-                             :download-paused "paused"
-                             :download-error "error"
-                             :download-stopped "complete"
-                             :download-complete "complete"
-                             :bt-download-complete "complete"
-                             :status-received (:status download)
-                             nil)]
+            status-fn (action->status action-type (fn [dl] nil))
+            download-state (status-fn download)]
         (swap! downloads update-in [gid] #(merge % (if download-state
-                                                 (assoc download :status download-state)
-                                                 download)))
+                                                     (assoc download :status download-state)
+                                                     download)))
         (recur)))))
 
 (defn controls [download-cursor api]
