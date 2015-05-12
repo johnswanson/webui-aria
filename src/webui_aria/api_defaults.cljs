@@ -4,4 +4,6 @@
                :port "6800"
                :secure? nil
                :path "/jsonrpc"
-               :token "testing"})
+               :token "testing"
+               :queue {:timeout 100
+                       :size 10}})

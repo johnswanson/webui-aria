@@ -11,10 +11,12 @@
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (defprotocol IApi
-  (init [this action-ch])
+  (init [this])
   (start [this])
   (stop [this])
   (restart [this])
+  (call! [this actions])
+  (call-loop! [this])
   (call [this action])
   (params [this args])
   (action [this method params])
@@ -86,17 +88,17 @@
 
 (defrecord Api [config channels responses action-ch state]
   IApi
-  (init [this action-ch]
+  (init [this]
     (let [channels
           {:send-ch         (a/chan 1 send-channel-transducer)
            :ws-ch           (a/chan 1 ws-channel-transducer)
            :error-ch        (a/chan 1 (error-channel-transducer this))
            :message-ch      (a/chan 1 message-channel-transducer)
-           :response-ch     (a/chan)
            :notification-ch (a/chan 1 notification-channel-transducer)}
           sinks {:ws-ch-write (a/chan)
-                 :action-ch   action-ch}
-          response-pub      (a/pub (:response-ch channels) :id)]
+                 :response-ch (a/chan)
+                 :action-ch   (a/chan)}
+          response-pub      (a/pub (:response-ch sinks) :id)]
       (go-loop []
         (let [[[channel-key value] incoming-ch] (a/alts! (vals channels))]
           (log-flow channels incoming-ch channel-key value)
@@ -110,12 +112,14 @@
                   incoming-ch))))
         (recur))
       (assoc this
+             :queue-ch (a/chan)
              :channels channels
              :sinks sinks
              :responses response-pub
              :state (atom {:status :initialized :ws-channel nil})
-             :action-ch action-ch)))
+             :action-ch (sinks :action-ch))))
   (start [this]
+    (call-loop! this)
     (when-not (= (:status @state) :connecting)
       (swap! state assoc :status :connecting)
       (go
@@ -145,10 +149,44 @@
   (restart [this]
     (stop this)
     (start this))
+  (call! [this actions]
+    (when (seq actions)
+      (let [response (a/chan)
+            params (reduce (fn [ps a]
+                             (conj ps {:methodName (:method a)
+                                       :params     (:params a)}))
+                           []
+                           actions)
+            multicall-action {:jsonrpc "2.0"
+                              :id (uuid/uuid-string (uuid/make-random-uuid))
+                              :method "system.multicall"
+                              :params [params]}]
+        (a/sub responses (:id multicall-action) response)
+        (a/put! (channels :send-ch) multicall-action)
+        (go (let [{:keys [result]} (a/<! response)
+                  new-responses (map-indexed (fn [i [r]]
+                                               {:id (:id (get actions i))
+                                                :result r})
+                                             result)]
+              (doseq [response new-responses]
+                (a/put! (get-in this [:sinks :response-ch]) response)))))))
+  (call-loop! [this]
+    (go-loop [as []]
+      (let [timeout (a/timeout (-> config :queue :timeout))
+            [a ch] (a/alts! [timeout (:queue-ch this)])
+            timed-out? (= timeout ch)
+            actions (if timed-out? as (conj as a))]
+        (if (or timed-out?
+                (> (count actions)
+                   (-> config :queue :size)))
+          (do
+            (call! this actions)
+            (recur []))
+          (recur actions)))))
   (call [this action]
     (let [response (a/chan)]
       (a/sub responses (:id action) response)
-      (a/put! (-> channels :send-ch) action)
+      (a/put! (:queue-ch this) action)
       response))
   (params [this args]
     (if-let [token (:token config)]
@@ -208,7 +246,11 @@
     (let [act (action this "remove" [gid])]
       (call this act))))
 
+(defonce api-atom (atom (init (map->Api {}))))
+
 (defn api [config action-ch]
-  (let [a (init (map->Api {:config config}) action-ch)]
+  (swap! api-atom assoc :config config)
+  (let [a @api-atom]
+    (a/pipe (:action-ch a) action-ch)
     (start a)))
 
