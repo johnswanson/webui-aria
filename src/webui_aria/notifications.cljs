@@ -43,46 +43,43 @@
                  (doseq [[_ l] (m topic)]
                    (.removeEventListener n (name topic) l))))))))
 
-(defprotocol INotifier
-  (request! [this]
-    "Request permission to post notifications.
-    Returns a channel containing a single keyword representation
-    of the granted permission, like :granted or :denied. May safely
-    be called more than once, as it is 'polite'.")
-  (current-permission [this]
-    "Current state of Notification.permission")
-  (can-notify? [this]
-    "Does the app have permission to send notifications right now?")
-  (notify! [this title opts]
-    "Send a notification to the user. If successful (permission is
-    granted), returns a notification that implements core.async.Pub
-    for event handling (e.g. `(sub n :click ch)` subscribes ch to
-    'click' events on the notification.)"))
+(defn current-permission
+  "Current state of Notification.permission"
+  []
+  (keyword (.-permission js/Notification)))
 
-(defrecord Notifier []
-  INotifier
-  (request! [this]
-    (let [ch (a/chan)
-          compatible? (.-Notification js/window)
-          need-request? (not (#{:granted :denied}
-                              (keyword (.-permission js/Notification))))
-          f (fn [p]
-              (a/put! ch (keyword p))
-              (a/close! ch))]
-      (cond
-        (and compatible? need-request?) (.requestPermission js/Notification f)
-        compatible? (f (.-permission js/Notification)))
-      ch))
+(defn request!
+  "Request permission to post notifications.
+  Returns a channel containing a single keyword representation
+  of the granted permission, like :granted or :denied. May safely
+  be called more than once, as it is 'polite'."
+  []
+  (let [ch (a/chan)
+        compatible? (.-Notification js/window)
+        need-request? (not (#{:granted :denied}
+                            (keyword (.-permission js/Notification))))
+        f (fn [p]
+            (a/put! ch (keyword p))
+            (a/close! ch))]
+    (cond
+      (and compatible? need-request?) (.requestPermission js/Notification f)
+      compatible? (f (.-permission js/Notification)))
+    ch))
 
-  (current-permission [this]
-    (keyword (.-permission js/Notification)))
+(defn can-notify?
+  "Does the app have permission to send notifications right now?"
+  []
+  (= :granted (current-permission)))
 
-  (can-notify? [this] (= :granted (current-permission this)))
-
-  (notify! [this title opts]
-    (when (can-notify? this)
-      (notification
-       (js/Notification. title (clj->js opts))))))
+(defn notify! 
+  "Send a notification to the user. If successful (permission is
+  granted), returns a notification that implements core.async.Pub
+  for event handling (e.g. `(sub n :click ch)` subscribes ch to
+    'click' events on the notification.)"
+  [title opts]
+  (when (can-notify?)
+    (notification
+     (js/Notification. title (clj->js opts)))))
 
 (defn sub
   ([p v ch] (sub p v ch true))
@@ -92,7 +89,4 @@
 
 (defn unsub-all
   ([p] (unsub-all* p)) )
-
-(defn notifier []
-  (->Notifier))
 
