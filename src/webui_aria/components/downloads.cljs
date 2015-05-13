@@ -10,7 +10,7 @@
 (defn listen-for-timeout! [api downloads]
   (let [t 1000]
     (go-loop [ch (a/timeout t)]
-      (let [_ (<! ch)]
+      (let [_ (a/<! ch)]
         (doseq [gid (keys @downloads)]
           (api/get-status api gid))
         (recur (a/timeout t))))))
@@ -27,7 +27,7 @@
                         :status-received      (fn [dl] (:status dl))}]
     (apply utils/sub-multiple pub ch (keys action->status))
     (go-loop []
-      (let [[action-type {:keys [gid] :as download}] (<! ch)
+      (let [[action-type {:keys [gid] :as download}] (a/<! ch)
             status-fn (action->status action-type (fn [dl] nil))
             download-state (status-fn download)]
         (swap! downloads update-in [gid] #(merge % (if download-state
