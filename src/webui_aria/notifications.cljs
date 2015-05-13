@@ -41,7 +41,8 @@
         (swap! listeners
                (fn [m]
                  (doseq [[_ l] (m topic)]
-                   (.removeEventListener n (name topic) l))))))))
+                   (.removeEventListener n (name topic) l))
+                 (dissoc m topic)))))))
 
 (defn current-permission
   "Current state of Notification.permission"
