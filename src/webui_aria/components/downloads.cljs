@@ -11,6 +11,9 @@
   (let [t 1000]
     (go-loop [ch (a/timeout t)]
       (let [_ (a/<! ch)]
+        (api/get-active api)
+        (api/get-waiting api 0 10000)
+        (api/get-stopped api 0 10000)
         (doseq [gid (keys @downloads)]
           (api/get-status api gid))
         (recur (a/timeout t))))))

@@ -24,8 +24,8 @@
   (start-download [this url])
   (get-status [this gid])
   (get-active [this])
-  (get-stopped [this])
-  (get-waiting [this])
+  (get-stopped [this offset num])
+  (get-waiting [this offset num])
   (pause-download [this gid])
   (unpause-download [this gid])
   (remove-download [this gid]))
@@ -222,15 +222,15 @@
             (doseq [status statuses]
               (actions/emit-status-received! action-ch (:gid status) status))
             (a/close! ch)))))
-  (get-waiting [this]
-    (let [act (action this "tellWaiting" [])
+  (get-waiting [this offset num]
+    (let [act (action this "tellWaiting" [offset num])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
               (actions/emit-status-received! action-ch (:gid status) status))
             (a/close! ch)))))
-  (get-stopped [this]
-    (let [act (action this "tellStopped" [])
+  (get-stopped [this offset num]
+    (let [act (action this "tellStopped" [offset num])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
