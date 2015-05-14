@@ -7,6 +7,20 @@
             [webui-aria.components.speed-chart :as speed-chart])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
+(def download-actions [:download-init
+                       :download-started
+                       :download-paused
+                       :download-error
+                       :download-stopped
+                       :download-complete
+                       :bt-download-complete
+                       :status-received])
+
+(defn download-action-ch [pub]
+  (let [ch (a/chan)]
+    (apply utils/sub-multiple pub ch download-actions)
+    ch))
+
 (defn listen-for-timeout! [api downloads]
   (let [t 1000]
     (go-loop [ch (a/timeout t)]
@@ -18,24 +32,24 @@
           (api/get-status api gid))
         (recur (a/timeout t))))))
 
-(defn listen-for-notifications! [pub downloads]
-  (let [ch (a/chan)
-        action->status {:download-init        (fn [dl] "waiting")
-                        :download-started     (fn [dl] "active")
-                        :download-paused      (fn [dl] "paused")
-                        :download-error       (fn [dl] "error")
-                        :download-stopped     (fn [dl] "complete")
-                        :download-complete    (fn [dl] "complete")
-                        :bt-download-complete (fn [dl] "complete")
-                        :status-received      (fn [dl] (:status dl))}]
-    (apply utils/sub-multiple pub ch (keys action->status))
+(defn listen-for-notifications!
+  "Listens to actions, and updates downloads accordingly."
+  [pub downloads]
+  (let [ch (download-action-ch pub)]
     (go-loop []
-      (let [[action-type {:keys [gid] :as download}] (a/<! ch)
-            status-fn (action->status action-type (fn [dl] nil))
-            download-state (status-fn download)]
-        (swap! downloads update-in [gid] #(merge % (if download-state
-                                                     (assoc download :status download-state)
-                                                     download)))
+      (let [[action-type {:keys [gid] :as dl}] (a/<! ch)
+            new-dl (case action-type
+                     :download-init        (assoc dl :status "waiting")
+                     :download-started     (assoc dl :status "active")
+                     :download-paused      (assoc dl :status "paused")
+                     :download-error       (assoc dl :status "error")
+                     :download-stopped     (assoc dl :status "complete")
+                     :download-complete    (assoc dl :status "complete")
+                     :bt-download-complete (assoc dl :status "complete")
+                     :status-received      dl
+                     (throw (js/Error "Unhandled action-type: " action-type)))
+            update-download (fn [dl] (merge dl new-dl))]
+        (swap! downloads update-in [gid] update-download)
         (recur)))))
 
 (defn controls [download-cursor api]
