@@ -48,7 +48,7 @@
                     "error"    {:play :disabled  :pause nil       :stop :disabled}
                     "complete" {:play nil        :pause :disabled :stop :disabled}
                     "removed"  {:play :disabled  :pause nil       :stop :disabled}
-                    :linked    {:play :disabled  :pause nil       :stop :disabled})]
+                    "linked"   {:play :disabled  :pause nil       :stop :disabled})]
       [:div
        (when-let [pause-display (:pause display)]
          [:a.btn.pause-btn {:class (name pause-display)
