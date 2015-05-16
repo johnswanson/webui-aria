@@ -1,14 +1,14 @@
 (ns ^:figwheel-always webui-aria.core
-    (:require [cljs.core.async :refer [chan pub <! >! put! close! sub]]
-              [reagent.core :as reagent]
-              [webui-aria.actions :as actions]
-              [webui-aria.components.app :refer [app]])
+    (:require [reagent.core :as reagent]
+              [re-frame.core :refer [dispatch-sync]]
+              [webui-aria.components.app :refer [app]]
+              [webui-aria.subs]
+              [webui-aria.handlers])
     (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
-(def action-chan (chan))
-(def action-pub (pub action-chan actions/type))
-
+(dispatch-sync [:init-db])
+(dispatch-sync [:api-connect {:hostname "localhost"}])
 (reagent/render-component
- [app action-pub action-chan]
+ [app]
  (.-body js/document))
 

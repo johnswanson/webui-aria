@@ -1,95 +1,57 @@
 (ns webui-aria.components.app
   (:require [webui-aria.components.downloads :as downloads]
-            [webui-aria.components.new-download-form :refer [new-download]]
-            [webui-aria.actions :as actions]
             [webui-aria.utils :as utils]
-            [webui-aria.api :as api]
-            [webui-aria.api-defaults :as api-defaults]
-            [reagent.core :as reagent :refer [atom cursor]]
-            [cljs.core.async :as a])
-  (:require-macros [cljs.core.async.macros :refer [go-loop]]))
+            [re-frame.core :refer [dispatch subscribe]]))
 
-(defn nav-component [api pub]
-  (fn [api pub]
-    [:nav
-     [:div.nav-wrapper
-      [:div.container
-       [:a.brand-logo {:href "#"} "Aria WebUI"]
-       [:ul.right
-        [:li [:a.nav {:href "#"} "Configure"]]]]]]))
-
-(defn new-download-button [actions]
-  (fn [actions]
-    [:p.center-align
-     [:a.btn
-      {:on-click #(actions/emit-adding-new-download! actions)}
-      "New Download"]]))
-
-(defn filter-selector [filter? filter-name actions]
+(defn filter-selector [f]
   (let [id (utils/rand-hex-str 16)]
-    (fn [filter? filter-name actions]
-      [:div.row
+    (fn [{:keys [fname enabled?]}]
+      [:div
        [:input {:type "checkbox"
                 :id id
-                :on-change #(actions/emit-filter-toggled!
-                             actions
-                             filter-name
-                             (not @filter?))
-                :checked @filter?}]
-       [:label {:for id} (name filter-name)]])))
+                :on-change #(dispatch [:filter-toggled fname])
+                :checked enabled?}]
+       [:label {:for id} (name fname)]])))
 
-(defn filters-component [filters actions]
-  (fn [filters actions]
-    (let [{:keys [running? active?]} @filters]
-      [:div.section.container
-       [:h5 "Filters"]
-       [:div.section
-        [filter-selector (cursor filters [:active]) :active actions]
-        [filter-selector (cursor filters [:waiting]) :waiting actions]
-        [filter-selector (cursor filters [:paused]) :paused actions]
-        [filter-selector (cursor filters [:error]) :error actions]
-        [filter-selector (cursor filters [:complete]) :complete actions]
-        [filter-selector (cursor filters [:removed]) :removed actions]
-        [filter-selector (cursor filters [:linked]) :linked actions]]])))
+(defn filter-items []
+  (let [filters (subscribe [:filters])]
+    (fn []
+      [:div [:h5 "Filters"]
+       (for [f (vals @filters)]
+         ^{:key (:fname f)} [filter-selector f])])))
 
-(defn listen-for-filters! [filters pub]
-  (let [ch (a/chan)]
-    (a/sub pub :filter-toggled ch)
-    (go-loop []
-      (let [[action-type {:keys [filter active?]}] (a/<! ch)]
-        (swap! filters assoc filter active?)
-        (recur)))))
+(defn new-download-button []
+  (fn []
+    [:a.btn {:on-click #(dispatch [:open-new-download-modal])}
+     "New Download"]))
 
-(defn app [pub actions]
-  (let [api-config api-defaults/defaults
-        api (api/api api-config actions)]
-    (fn [pub actions]
-      (let [filters (atom {:active true
-                           :waiting true
-                           :paused true
-                           :error true
-                           :complete true
-                           :removed true
-                           :linked false})]
-        (listen-for-filters! filters pub)
-        [:div.entire-app
-         [:header
-          [:div.navbar-fixed
-           [nav-component api pub]]]
-         [:div.row.content
-          [:div.col.s3.sidebar
-           [:div
-            [:span.connection-state "hi"]]
-           [:div
-            [:div.row.section
-             [:div.col.s12 [new-download-button actions]]
-             [:div.col.s12 [new-download-button actions]]]]
-           [:div.container
-            [:div.row.section
-             [:div.col.s12.filter-selectors
-              [filters-component filters actions]]]]]
-          [:main
-           [:div.col.s9.offset-s3.offset-m0.main
-            [new-download api pub]
-            [downloads/downloads-component filters api pub]]]]
-         [:footer.page-footer]]))))
+(defn logo []
+  (fn []
+    [:a {:href "#"} "Aria WebUI"]))
+
+(defn configure-button []
+  (fn []
+    [:a {:href "#"} "Configure"]))
+
+(defn links []
+  (fn [link-components]
+    [:ul
+     (for [i (range (count link-components))
+           :let [link-component (get link-components i)]]
+      ^{:key i} [:li [link-component]])]))
+
+(defn app
+  []
+  (let [downloads (subscribe [:downloads])
+        filtered  (subscribe [:filtered-downloads])]
+    (fn []
+      [:div
+       [:section#app
+        [:header#header
+         [logo]
+         [links [configure-button]]]
+        [:section#sidebar
+         [new-download-button]
+         [filter-items]]
+        [:main
+         [downloads/download-items []]]]])))

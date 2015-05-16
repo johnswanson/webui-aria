@@ -6,6 +6,7 @@
 
   :dependencies [[org.clojure/clojure "1.7.0-beta2"]
                  [org.clojure/clojurescript "0.0-3211"]
+                 [re-frame "0.4.0"]
                  [figwheel "0.3.1"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [reagent "0.5.0"]

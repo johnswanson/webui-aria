@@ -3,7 +3,7 @@
             [cljs-uuid-utils.core :as uuid]
             [chord.client :refer [ws-ch]]
             [cemerick.url :refer [map->URL]]
-            [webui-aria.actions :as actions]
+            [re-frame.core :refer [dispatch]]
             [webui-aria.utils :refer
              [aria-endpoint aria-gid hostname]
              :as utils]
@@ -66,12 +66,12 @@
                           "aria2.onBtDownloadComplete" :bt-download-completed
                           nil)]
            (if (and emission method gid)
-             [:action-ch (actions/from-notification emission gid)]
+             [:action-ch [emission {:gid gid}]]
              [:error-ch notification])))))
 
 (defn error-channel-transducer [api]
   (map (fn [err]
-         [:action-ch (actions/from-error err)])))
+         [:action-ch [:error err]])))
 
 (def send-channel-transducer
   (map (fn [val] [:ws-ch-write (.stringify js/JSON (clj->js val))])))
@@ -201,40 +201,40 @@
     (let [act (action this "getVersion" [])
           ch (call this act)]
       (go (let [resp (a/<! ch)]
-            (actions/emit-version-received! action-ch resp)
+            (dispatch [:version-received resp])
             (a/close! ch)))))
   (start-download [this url]
     (let [act (action this "addUri" [[url] {"gid" (aria-gid)}])
           ch (call this act)]
       (go (let [{gid :result} (a/<! ch)]
-            (actions/emit-download-init! action-ch gid)
+            (dispatch [:download-initialized gid])
             (a/close! ch)))))
   (get-status [this gid]
     (let [act (action this "tellStatus" [gid])
           ch (call this act)]
       (go (let [{status :result} (<! ch)]
-            (actions/emit-status-received! action-ch gid status)
+            (dispatch [:download-status-received gid status])
             (a/close! ch)))))
   (get-active [this]
     (let [act (action this "tellActive" [])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (actions/emit-status-received! action-ch (:gid status) status))
+              (dispatch [:download-status-received (:gid status) status]))
             (a/close! ch)))))
   (get-waiting [this offset num]
     (let [act (action this "tellWaiting" [offset num])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (actions/emit-status-received! action-ch (:gid status) status))
+              (dispatch [:download-status-received (:gid status) status]))
             (a/close! ch)))))
   (get-stopped [this offset num]
     (let [act (action this "tellStopped" [offset num])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (actions/emit-status-received! action-ch (:gid status) status))
+              (dispatch [:download-status-received (:gid status) status]))
             (a/close! ch)))))
   (pause-download [this gid]
     (let [act (action this "pause" [gid])]
@@ -248,9 +248,10 @@
 
 (defonce api-atom (atom (init (map->Api {}))))
 
-(defn api [config action-ch]
+(defn api [config]
   (swap! api-atom assoc :config config)
   (let [a @api-atom]
-    (a/pipe (:action-ch a) action-ch)
+    (go-loop [] (when-let [[& args] (a/<! (:action-ch a))]
+                  (dispatch args)))
     (start a)))
 
