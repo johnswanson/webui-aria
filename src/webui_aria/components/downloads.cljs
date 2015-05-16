@@ -5,8 +5,8 @@
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (defn speed [key dl]
-  (let [speed (get-in dl key)]
-    (fn []
+  (fn [key dl]
+    (let [speed (get dl key)]
       [:span.speed (fmt/numBytesToString speed 1) "/s"])))
 
 (defn completed-length [{:keys [completed-length]}]

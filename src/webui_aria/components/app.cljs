@@ -54,4 +54,4 @@
          [new-download-button]
          [filter-items]]
         [:main
-         [downloads/download-items []]]]])))
+         [downloads/download-items @filtered]]]])))

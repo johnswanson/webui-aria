@@ -76,16 +76,6 @@
 (def send-channel-transducer
   (map (fn [val] [:ws-ch-write (.stringify js/JSON (clj->js val))])))
 
-(defn log-flow [channels incoming-channel outgoing-channel-key value]
-  (let [name-of-incoming-ch (fn [ch] (ffirst
-                                      (filter (fn [[k v]]
-                                                (= v ch))
-                                              channels)))]
-    (js/console.log (name (name-of-incoming-ch incoming-channel))
-                    " => "
-                    (name outgoing-channel-key)
-                    "[ " (clj->js value) " ]")))
-
 (defrecord Api [config channels responses action-ch state]
   IApi
   (init [this]
@@ -101,7 +91,6 @@
           response-pub      (a/pub (:response-ch sinks) :id)]
       (go-loop []
         (let [[[channel-key value] incoming-ch] (a/alts! (vals channels))]
-          (log-flow channels incoming-ch channel-key value)
           (if-let [ch (or (channels channel-key) (sinks channel-key))]
             (a/put! ch value)
             (a/put!
@@ -201,40 +190,40 @@
     (let [act (action this "getVersion" [])
           ch (call this act)]
       (go (let [resp (a/<! ch)]
-            (dispatch [:version-received resp])
+            (a/put! action-ch [:version-received resp])
             (a/close! ch)))))
   (start-download [this url]
     (let [act (action this "addUri" [[url] {"gid" (aria-gid)}])
           ch (call this act)]
       (go (let [{gid :result} (a/<! ch)]
-            (dispatch [:download-initialized gid])
+            (a/put! action-ch [:download-initialized gid])
             (a/close! ch)))))
   (get-status [this gid]
     (let [act (action this "tellStatus" [gid])
           ch (call this act)]
       (go (let [{status :result} (<! ch)]
-            (dispatch [:download-status-received gid status])
+            (a/put! action-ch [:download-status-received gid status])
             (a/close! ch)))))
   (get-active [this]
     (let [act (action this "tellActive" [])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (dispatch [:download-status-received (:gid status) status]))
+              (a/put! action-ch [:download-status-received (:gid status) status]))
             (a/close! ch)))))
   (get-waiting [this offset num]
     (let [act (action this "tellWaiting" [offset num])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (dispatch [:download-status-received (:gid status) status]))
+              (a/put! action-ch [:download-status-received (:gid status) status]))
             (a/close! ch)))))
   (get-stopped [this offset num]
     (let [act (action this "tellStopped" [offset num])
           ch (call this act)]
       (go (let [{statuses :result} (<! ch)]
             (doseq [status statuses]
-              (dispatch [:download-status-received (:gid status) status]))
+              (a/put! action-ch [:download-status-received (:gid status) status]))
             (a/close! ch)))))
   (pause-download [this gid]
     (let [act (action this "pause" [gid])]
@@ -252,6 +241,7 @@
   (swap! api-atom assoc :config config)
   (let [a @api-atom]
     (go-loop [] (when-let [[& args] (a/<! (:action-ch a))]
-                  (dispatch args)))
+                  (dispatch (into [] args))
+                  (recur)))
     (start a)))
 

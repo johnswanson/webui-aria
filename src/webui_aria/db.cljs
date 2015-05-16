@@ -15,4 +15,4 @@
          (new-filter :linked false)]))
 
 (def default-value {:filters default-filters
-                    :downloads []})
+                    :downloads (array-map)})
