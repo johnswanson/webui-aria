@@ -1,3 +1,21 @@
-Just messing around to build a web-UI over [aria's RPC interface](http://aria2.sourceforge.net/manual/en/html/aria2c.html).
+# webui-aria
 
-![Screenshot](https://raw.githubusercontent.com/johnswanson/webui-aria/screenshot/shot1.png "Screenshot")
+A [re-frame](https://github.com/Day8/re-frame) application designed to ... well, that part is up to you.
+
+## Development Mode
+
+```
+lein clean
+lein figwheel
+```
+
+Figwheel will automatically push cljs changes to the browser.
+
+Wait a bit, then browse to [http://localhost:3449](http://localhost:3449).
+
+## Production Build
+
+```
+lein clean
+lein cljsbuild once min
+```
