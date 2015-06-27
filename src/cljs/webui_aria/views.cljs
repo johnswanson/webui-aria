@@ -1,13 +1,23 @@
 (ns webui-aria.views
+  (:require-macros [plumbing.core :refer [defnk fnk]])
   (:require [re-frame.core :as re-frame]
-            [plumbing.core :refer :all]))
+            [webui-aria.api :as api]))
 
 ;; --------------------
+
+(defn download-render [download]
+  [:pre (pr-str download)])
+
+(defn request-render [request]
+  [:pre (pr-str request)])
+
 (defn home-panel []
-  (let [name (re-frame/subscribe [:name])]
+  (let [downloads (re-frame/subscribe [:downloads])
+        requests (re-frame/subscribe [:pending-requests])]
     (fn []
-      [:div (str "Hello from " @name ". This is the Home Page.")
-       [:div [:a {:href "#/about"} "go to About Page"]]])))
+      [:div
+       (into [:div] (map download-render @downloads))
+       (into [:div] (map request-render @requests))])))
 
 (defn about-panel []
   (fn []

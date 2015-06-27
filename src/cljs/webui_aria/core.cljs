@@ -1,11 +1,12 @@
 (ns webui-aria.core
-    (:require [reagent.core :as reagent]
-              [re-frame.core :as re-frame]
-              [plumbing.core :refer :all]
-              [webui-aria.handlers]
-              [webui-aria.subs]
-              [webui-aria.routes :as routes]
-              [webui-aria.views :as views]))
+  (:require-macros [plumbing.core :refer [defnk fnk]])
+  (:require [reagent.core :as reagent]
+            [re-frame.core :as re-frame]
+            [webui-aria.handlers]
+            [webui-aria.subs]
+            [webui-aria.routes :as routes]
+            [webui-aria.views :as views]
+            [webui-aria.api :as api]))
 
 (defn mount-root []
   (reagent/render [views/main-panel]
@@ -14,4 +15,6 @@
 (defn ^:export init [] 
   (routes/app-routes)
   (re-frame/dispatch-sync [:initialize-db])
+  (re-frame/dispatch-sync [:add-uri {:uris ["http://google.com"]}])
   (mount-root))
+

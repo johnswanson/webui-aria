@@ -1,11 +1,11 @@
 (ns webui-aria.routes
-    (:require-macros [secretary.core :refer [defroute]])
-    (:import goog.History)
-    (:require [secretary.core :as secretary]
-              [plumbing.core :refer :all]
-              [goog.events :as events]
-              [goog.history.EventType :as EventType]
-              [re-frame.core :as re-frame]))
+  (:require-macros [secretary.core :refer [defroute]]
+                   [plumbing.core :refer [defnk fnk]])
+  (:import goog.History)
+  (:require [secretary.core :as secretary]
+            [goog.events :as events]
+            [goog.history.EventType :as EventType]
+            [re-frame.core :as re-frame]))
 
 (defn hook-browser-navigation! []
   (doto (History.)

@@ -1,10 +1,16 @@
 (defproject webui-aria "0.1.0-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/clojurescript "0.0-3211"]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [jarohen/chord "0.6.0"]
+                 [com.cemerick/url "0.1.1"]
+                 [com.lucasbradstreet/cljs-uuid-utils "1.0.1"]
                  [prismatic/plumbing "0.4.4"]
+                 [prismatic/schema "0.4.3"]
                  [reagent "0.5.0"]
                  [re-frame "0.4.1"]
-                 [secretary "1.2.3"]]
+                 [secretary "1.2.3"]
+                 [camel-snake-kebab "0.3.1"]]
 
   :source-paths ["src/clj"]
 
@@ -13,10 +19,13 @@
 
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
 
+  :figwheel {:server-port 3450}
+
   :cljsbuild {:builds [{:id "dev"
                         :source-paths ["src/cljs"]
 
-                        :figwheel {:on-jsload "webui-aria.core/mount-root"}
+                        :figwheel {:on-jsload "webui-aria.core/mount-root"
+                                   :websocket-host "aria.mkn.io"}
 
                         :compiler {:main webui-aria.core
                                    :output-to "resources/public/js/compiled/app.js"
