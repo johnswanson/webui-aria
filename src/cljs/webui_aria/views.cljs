@@ -1,22 +1,43 @@
 (ns webui-aria.views
-  (:require-macros [plumbing.core :refer [defnk fnk]])
-  (:require [re-frame.core :as re-frame]
+  (:require-macros [cljs.core.async.macros :refer [go-loop]])
+  (:require [re-frame.core :as re-frame :refer [dispatch subscribe]]
+            [re-frame.utils :refer [log warn error]]
+            [reagent.core :as reagent]
+            [cljs.core.async :refer [timeout <! put! chan]]
             [webui-aria.api :as api]))
 
 ;; --------------------
 
-(defn download-render [download]
-  [:pre (pr-str download)])
+(defn download-render [gid]
+  (let [download (subscribe [:download gid])
+        stop-ch (chan)
+        start!  (fn [download]
+                  (go-loop []
+                    (let [t (timeout 1000)
+                          [_ ch] (alts! [t stop-ch])]
+                      (when (= ch t)
+                        (dispatch [:get-status {:gid gid}])
+                        (recur)))))
+        stop!   (fn [] (put! stop-ch nil))]
+    (reagent/create-class
+     {:component-did-mount (partial start! download)
+      :component-will-unmount stop!
+      :reagent-render
+      (fn [gid]
+        [:div
+         [:h2 gid]
+         [:pre (pr-str @(subscribe [:download gid]))]])})))
 
 (defn request-render [request]
   [:pre (pr-str request)])
 
 (defn home-panel []
-  (let [downloads (re-frame/subscribe [:downloads])
-        requests (re-frame/subscribe [:pending-requests])]
+  (let [gids     (subscribe [:download-gids])
+        requests (subscribe [:pending-requests])]
     (fn []
       [:div
-       (into [:div] (map download-render @downloads))
+       (for [gid @gids]
+         ^{:key gid} [download-render gid])
        (into [:div] (map request-render @requests))])))
 
 (defn about-panel []
@@ -31,6 +52,6 @@
 (defmethod panels :default [] [:div])
 
 (defn main-panel []
-  (let [active-panel (re-frame/subscribe [:active-panel])]
+  (let [active-panel (subscribe [:active-panel])]
     (fn []
       (panels @active-panel))))

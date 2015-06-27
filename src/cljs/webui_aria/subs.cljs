@@ -1,6 +1,5 @@
 (ns webui-aria.subs
-    (:require-macros [reagent.ratom :refer [reaction]]
-                     [plumbing.core :refer [defnk fnk]])
+    (:require-macros [reagent.ratom :refer [reaction]])
     (:require [re-frame.core :as re-frame]))
 
 (re-frame/register-sub
@@ -14,9 +13,14 @@
    (reaction (:connection @db))))
 
 (re-frame/register-sub
- :downloads
+ :download-gids
  (fn [db]
-   (reaction (:downloads @db))))
+   (reaction (keys (:downloads @db)))))
+
+(re-frame/register-sub
+ :download
+ (fn [db [_ gid]]
+   (reaction (get (:downloads @db) gid))))
 
 (re-frame/register-sub
  :pending-requests

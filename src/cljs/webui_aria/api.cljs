@@ -1,11 +1,10 @@
 (ns webui-aria.api
-  (:require-macros [plumbing.core :refer [defnk fnk]]
-                   [reagent.ratom :refer [reaction]]
+  (:require-macros [reagent.ratom :refer [reaction]]
                    [cljs.core.async.macros :refer [go go-loop]])
   (:require [re-frame.core :as re-frame]
             [re-frame.utils :refer [log warn error]]
             [chord.client :refer [ws-ch]]
-            [cljs.core.async :refer [put! chan]]
+            [cljs.core.async :refer [put! chan close!]]
             [cljs-uuid-utils.core :as uuid]
             [cemerick.url :refer [map->URL]]
             [webui-aria.utils :as utils]))
@@ -32,10 +31,12 @@
                          arg-order)))
 
 (def arg-order
-  {:add-uri [:uris :options :position]})
+  {:add-uri    [:uris :options :position]
+   :get-status [:gid :keys]})
 
 (def method->str
-  {:add-uri "aria2.addUri"})
+  {:add-uri    "aria2.addUri"
+   :get-status "aria2.tellStatus"})
 
 (defn new-id [] (uuid/uuid-string (uuid/make-random-uuid)))
 
@@ -46,11 +47,11 @@
         order      (arg-order method)]
     (call-data id method-str config args order)))
 
-(defn on-data-received [val]
+(defn on-data-received [val ch]
   (let [{:keys [error message] :as input} (utils/->kw-kebab val)]
     (cond
       message (re-frame/dispatch [:api-message-received message])
-      error   (re-frame/dispatch [:api-error-received   error])
+      error   (re-frame/dispatch [:api-error-received   error ch])
       :else   (re-frame/dispatch [:api-unknown-received input]))))
 
 (defn on-message-received [{:keys [id method params result] :as message}]
@@ -82,22 +83,30 @@
 
 (defn receive-msgs! [ch]
   (go-loop []
-    (let [rec (<! ch)]
-      (on-data-received rec)
+    (when-let [rec (<! ch)]
+      (on-data-received rec ch)
       (recur))))
 
 (defn send-msgs! [!msgs ch]
   (go-loop []
-    (let [msg (<! !msgs)]
+    (when-let [msg (<! !msgs)]
       (put! ch msg)
       (recur))))
 
 (def connections (atom {}))
 
+(defn disconnect! [ch]
+  (swap! connections (fn [conns]
+                       (let [[config ch] (-> (filter (fn [[config channel]]
+                                                       (= ch channel))
+                                                     conns)
+                                             (first))]
+                         (close! ch)
+                         (dissoc conns config)))))
+
 (defn request!
   "Returns a channel of one value, "
   [config request]
-  (log (clj->js request))
   (if-let [conn (@connections config)] 
     (put! conn request)
     (go

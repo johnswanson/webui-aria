@@ -5,7 +5,6 @@
                  [jarohen/chord "0.6.0"]
                  [com.cemerick/url "0.1.1"]
                  [com.lucasbradstreet/cljs-uuid-utils "1.0.1"]
-                 [prismatic/plumbing "0.4.4"]
                  [prismatic/schema "0.4.3"]
                  [reagent "0.5.0"]
                  [re-frame "0.4.1"]

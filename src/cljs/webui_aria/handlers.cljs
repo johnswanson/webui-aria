@@ -1,5 +1,4 @@
 (ns webui-aria.handlers
-  (:require-macros [plumbing.core :refer [defnk fnk]])
   (:require [re-frame.core :as re-frame]
             [re-frame.utils :refer [error warn log]]
             [cljs-uuid-utils.core :as uuid]
@@ -19,7 +18,7 @@
 (defn register-api-handler [call-name]
   (re-frame/register-handler
    call-name
-   [re-frame/debug re-frame/trim-v]
+   [re-frame/trim-v]
    (fn [db [args]]
      (let [config (:connection db)
            request (api/request call-name config args)
@@ -27,17 +26,19 @@
        (api/request! config request)
        (update-in db [:pending-requests id]
                   assoc
+                  :config config
                   :id id
                   :method call-name
                   :request request)))))
 
 (register-api-handler :add-uri)
+(register-api-handler :get-status)
 
 (defn handle-add-uri [db {id :id gid :result}]
   (update-in db [:downloads gid] assoc :status :initialized))
 
 (defn handle-get-status [db {id :id status :result}]
-  (update-in [:downloads (:gid status)] merge status))
+  (update-in db [:downloads (:gid status)] merge status))
 
 (defn handle-no-request [db response]
   (error "Response received with no request found")
@@ -70,12 +71,14 @@
 (re-frame/register-handler
  :api-error-received
  [re-frame/debug re-frame/trim-v]
- (fn [db [error]]
+ (fn [db [error ch]]
+   (error (clj->js error))
+   (api/disconnect! ch)
    db))
 
 (re-frame/register-handler
  :api-unknown-received
- [re-frame/debug re-frame/trim-v]
+ [re-frame/trim-v]
  (fn [db [input]]
    (error (clj->js input))
    db))
@@ -91,7 +94,7 @@
   [handler status]
   (re-frame/register-handler
    handler
-   [re-frame/debug re-frame/trim-v]
+   [re-frame/trim-v]
    (fn [db [gid]]
      (assoc-in db [:downloads gid :status] status))))
 
