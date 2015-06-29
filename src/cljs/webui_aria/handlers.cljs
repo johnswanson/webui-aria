@@ -31,33 +31,47 @@
                   :method call-name
                   :request request)))))
 
-(register-api-handler :add-uri)
-(register-api-handler :get-status)
+(defn apply-status-updates [db statuses]
+  (reduce (fn [db status]
+            (update-in db [:downloads (:gid status)] merge status))
+          db
+          statuses))
 
-(defn handle-add-uri [db {id :id gid :result}]
-  (update-in db [:downloads gid] assoc :status :initialized))
+(def api-handlers
+  {:add-uri
+   (fn [db {gid :result}]
+     (update-in db [:downloads gid] assoc :status :initialized))
+   :get-status
+   (fn [db {status :result}]
+     (update-in db [:downloads (:gid status)] merge status))
+   :tell-active
+   (fn [db {[& statuses] :result}]
+     (apply-status-updates db statuses))
+   :tell-waiting
+   (fn [db {[& statuses] :result}]
+     (apply-status-updates db statuses))
+   :tell-stopped
+   (fn [db {[& statuses] :result}]
+     (apply-status-updates db statuses))
+   nil
+   (fn [db response]
+     (error "response received, no handler found")
+     (error response)
+     db)})
 
-(defn handle-get-status [db {id :id status :result}]
-  (update-in db [:downloads (:gid status)] merge status))
-
-(defn handle-no-request [db response]
-  (error "Response received with no request found")
-  (error (clj->js response))
-  db)
+(doseq [api-handler (keys api-handlers)]
+  (when api-handler
+    (register-api-handler api-handler)))
 
 (defn handler [method]
-  (let [handler ({:add-uri    handle-add-uri
-                  :get-status handle-get-status
-                  nil         handle-no-request} method)]
-    (fn [db response]
-      (-> db
-          (handler response)
-          (update-in [:pending-requests] dissoc (:id response))))))
+  (fn [db response]
+    (-> ((api-handlers method) db response)
+        (update-in [:pending-requests] dissoc (:id response)))))
 
 (re-frame/register-handler
  :api-response-received
  [re-frame/trim-v]
- (fn [db [{:keys [id result] :as response}]]
+ (fn [db [{:keys [id] :as response}]]
    (let [request (get-in db [:pending-requests id])]
      ((handler (:method request)) db response))))
 
@@ -103,5 +117,5 @@
 (register-notification-handler :download-stopped      :stopped)
 (register-notification-handler :download-completed    :completed)
 (register-notification-handler :download-errored      :errored)
-(register-notification-handler :bt-download-completed :completed)
+(register-notification-handler :bt-download-complete  :completed)
 

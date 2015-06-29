@@ -14,13 +14,11 @@
   [:pre (pr-str request)])
 
 (defn downloads-panel []
-  (let [gids     (subscribe [:download-gids])
-        requests (subscribe [:pending-requests])]
+  (let [gids (subscribe [:download-gids])]
     (fn []
       [:div
        (for [gid @gids]
-         ^{:key gid} [download/component gid])
-       (into [:div] (map request-render @requests))])))
+         ^{:key gid} [download/component gid])])))
 
 (defn modern-button [& {:keys [label on-click]}]
   (let [hover? (reagent/atom false)]

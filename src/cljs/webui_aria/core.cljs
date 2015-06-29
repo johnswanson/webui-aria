@@ -15,5 +15,8 @@
 (defn ^:export init [] 
   (routes/app-routes)
   (re-frame/dispatch-sync [:initialize-db])
+  (re-frame/dispatch [:tell-active])
+  (re-frame/dispatch [:tell-waiting {:offset 0 :num 100}])
+  (re-frame/dispatch [:tell-stopped {:offset 0 :num 100}])
   (mount-root))
 

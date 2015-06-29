@@ -31,12 +31,18 @@
                          arg-order)))
 
 (def arg-order
-  {:add-uri    [:uris :options :position]
-   :get-status [:gid :keys]})
+  {:add-uri      [:uris :options :position]
+   :get-status   [:gid :keys]
+   :tell-active  [:keys]
+   :tell-waiting [:offset :num]
+   :tell-stopped [:offset :num :keys]})
 
 (def method->str
-  {:add-uri    "aria2.addUri"
-   :get-status "aria2.tellStatus"})
+  {:add-uri      "aria2.addUri"
+   :get-status   "aria2.tellStatus"
+   :tell-active  "aria2.tellActive"
+   :tell-waiting "aria2.tellWaiting"
+   :tell-stopped "aria2.tellStopped"})
 
 (defn new-id [] (uuid/uuid-string (uuid/make-random-uuid)))
 
