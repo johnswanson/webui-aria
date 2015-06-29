@@ -3,7 +3,7 @@
                    [webui-aria.macros :refer [handler-fn]])
   (:require [re-frame.core :as re-frame :refer [dispatch subscribe]]
             [re-frame.utils :refer [log warn error]]
-            [re-com.core :refer [h-split v-box button input-textarea]]
+            [re-com.core :refer [h-split v-box button input-textarea h-box]]
             [re-com.popover :refer [popover-content-wrapper popover-anchor-wrapper]]
             [reagent.core :as reagent]
             [cljs.core.async :refer [timeout <! put! chan]]
@@ -22,17 +22,17 @@
 
 (defn modern-button [& {:keys [label on-click]}]
   (let [hover? (reagent/atom false)]
-    (fn [& {:keys [label on-click]}]
+    (fn [& {:keys [label on-click style]}]
       [button
-       :label label
+       :label    label
        :on-click on-click
-       :style    {:color            "white"
-                  :background-color (if @hover? "#0072bb" "#4d90fe")
-                  :font-size        "22px"
-                  :font-weight      "300"
-                  :border           "none"
-                  :border-radius    "0px"
-                  :padding          "20px 26px"}
+       :style    (merge {:color            "black"
+                         :background-color (if @hover? "#ddd" "#fff")
+                         :font-size        "22px"
+                         :font-weight      "300"
+                         :border           "1px solid black"
+                         :border-radius    "0px"
+                         :padding          "20px 26px"} style)
        :attr     {:on-mouse-over (handler-fn
                                   (reset! hover? true))
                   :on-mouse-out  (handler-fn
@@ -41,19 +41,24 @@
 (defn new-download-form []
   (let [val (reagent/atom "")]
     (fn []
-      [:div.new-download-form
-       [input-textarea
-        :model       @val
-        :on-change   (handler-fn (reset! val event))
-        :placeholder "URLs (or magnet torrent links) to download, separated by newlines"
-        :rows        5]
-       [modern-button
-        :label [:span "Start!" [:i.md-file-download]]
-        :on-click (handler-fn
-                   (let [str-val @val
-                         lines (str/split str-val #"\n")]
-                     (dispatch [:add-uri {:uris lines}])
-                     (reset! val "")))]])))
+      [v-box
+       :gap "1em"
+       :children [[input-textarea
+                   :model       @val
+                   :on-change   (handler-fn (reset! val event))
+                   :width       "800px"
+                   :placeholder "URLs (or magnet torrent links) to download, separated by newlines"
+                   :rows        5]
+                  [h-box
+                   :justify :center
+                   :children [[modern-button
+                               :label [:span "Start!" [:i.md-file-download]]
+                               :style {:font-size "15px"}
+                               :on-click (handler-fn
+                                          (let [str-val @val
+                                                lines (str/split str-val #"\n")]
+                                            (dispatch [:add-uri {:uris lines}])
+                                            (reset! val "")))]]]]])))
 
 (defn new-download-button []
   (let [showing? (reagent/atom false)
