@@ -56,21 +56,21 @@
 
 (re-frame/register-handler
  :api-response-received
- [re-frame/debug re-frame/trim-v]
+ [re-frame/trim-v]
  (fn [db [{:keys [id result] :as response}]]
    (let [request (get-in db [:pending-requests id])]
      ((handler (:method request)) db response))))
 
 (re-frame/register-handler
  :api-message-received
- [re-frame/debug re-frame/trim-v]
+ [re-frame/trim-v]
  (fn [db [message]]
    (api/on-message-received message)
    db))
 
 (re-frame/register-handler
  :api-error-received
- [re-frame/debug re-frame/trim-v]
+ [re-frame/trim-v]
  (fn [db [error ch]]
    (error (clj->js error))
    (api/disconnect! ch)
@@ -85,7 +85,7 @@
 
 (re-frame/register-handler
  :api-notification-received
- [re-frame/debug re-frame/trim-v]
+ [re-frame/trim-v]
  (fn [db [notification]]
    (api/on-notification-received notification)
    db))

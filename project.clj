@@ -8,6 +8,7 @@
                  [prismatic/schema "0.4.3"]
                  [reagent "0.5.0"]
                  [re-frame "0.4.1"]
+                 [re-com "0.5.4"]
                  [secretary "1.2.3"]
                  [camel-snake-kebab "0.3.1"]]
 
@@ -18,7 +19,8 @@
 
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
 
-  :figwheel {:server-port 3450}
+  :figwheel {:server-port 3450
+             :css-dirs ["resources/public/css"]}
 
   :cljsbuild {:builds [{:id "dev"
                         :source-paths ["src/cljs"]
