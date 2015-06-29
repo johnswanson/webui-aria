@@ -5,6 +5,17 @@
             [reagent.core :as reagent]
             [cljs.core.async :refer [timeout <! put! chan]]))
 
+(defn progress [dl]
+  (fn [dl]
+    (let [pct (* 100 (/ (:completed-length dl) (:total-length dl)))]
+      [:div {:style {:position "absolute"
+                     :top "0px"
+                     :left "0px"
+                     :z-index "-1"
+                     :height "100%"
+                     :background-color "#DDD"
+                     :width (str pct "%")}}])))
+
 (defn component [gid]
   (let [download (subscribe [:download gid])
         stop-ch (chan)
@@ -21,6 +32,8 @@
       :component-will-unmount stop!
       :reagent-render
       (fn [gid]
-        [:div
-         [:h2 gid]
-         [:div (pr-str @(subscribe [:download gid]))]])})))
+        (let [dl @download]
+          [:div {:style {:position "relative"}}
+           [:span (or (-> dl :files first :path) (get-in dl [:bittorrent :info :name]))]
+           [:pre (pr-str @(subscribe [:download gid]))]
+           [progress dl]]))})))
