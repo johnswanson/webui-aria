@@ -19,39 +19,24 @@
         ps (into [] (take-while identity (map #(% arg-obj) kws)))]
     (apply vector ps)))
 
-(defn call-data
-  "1 , \"addUri\" , {} , {:foo :bar} , [:foo]
-   =>
-   {:id 1 :method \"addUri\" :params [:bar] :jsonrpc \"2.0\"}"
-  [id method config args arg-order]
-  (assoc base-call-data
-         :id id
-         :method method
-         :params (params (assoc args :secret (config :secret))
-                         arg-order)))
-
-(def arg-order
-  {:add-uri      [:uris :options :position]
-   :get-status   [:gid :keys]
-   :tell-active  [:keys]
-   :tell-waiting [:offset :num]
-   :tell-stopped [:offset :num :keys]})
-
-(def method->str
-  {:add-uri      "aria2.addUri"
-   :get-status   "aria2.tellStatus"
-   :tell-active  "aria2.tellActive"
-   :tell-waiting "aria2.tellWaiting"
-   :tell-stopped "aria2.tellStopped"})
+(def method-info
+  {:add-uri      ["aria2.addUri"      [:uris :options :position]]
+   :get-status   ["aria2.tellStatus"  [:gid :keys]]
+   :tell-active  ["aria2.tellActive"  [:keys]]
+   :tell-waiting ["aria2.tellWaiting" [:offset :num]]
+   :tell-stopped ["aria2.tellStopped" [:offset :num :keys]]
+   :multicall    ["system.multicall"  [:methods]]})
 
 (defn new-id [] (uuid/uuid-string (uuid/make-random-uuid)))
 
 (defn request [method config args]
   (let [id         (new-id)
-        as         (assoc args :id id)
-        method-str (method->str method)
-        order      (arg-order method)]
-    (call-data id method-str config args order)))
+        as         (assoc args :id id :secret (config :secret))
+        [method-str order] (method-info method)]
+    (assoc base-call-data
+           :id id
+           :method method-str
+           :params (params as order))))
 
 (defn on-data-received [val ch]
   (let [{:keys [error message] :as input} (utils/->kw-kebab val)]
