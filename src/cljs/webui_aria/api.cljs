@@ -31,7 +31,9 @@
 
 (defn request [method config args]
   (let [id         (new-id)
-        as         (assoc args :id id :secret (config :secret))
+        as         (assoc args :id id :secret (when-not (= method :multicall)
+                                                ;; treated specially
+                                                (config :secret)))
         [method-str order] (method-info method)]
     (assoc base-call-data
            :id id
@@ -96,7 +98,6 @@
                          (dissoc conns config)))))
 
 (defn request!
-  "Returns a channel of one value, "
   [config request]
   (if-let [conn (@connections config)] 
     (put! conn request)

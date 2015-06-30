@@ -39,24 +39,25 @@
 
 (def api-handlers
   {:add-uri
-   (fn [db {gid :result}]
+   (fn [db {gid :result} _]
      (update-in db [:downloads gid] assoc :status :initialized))
    :get-status
-   (fn [db {status :result}]
+   (fn [db {status :result} _]
      (update-in db [:downloads (:gid status)] merge status))
    :tell-active
-   (fn [db {[& statuses] :result}]
+   (fn [db {[& statuses] :result} _]
      (apply-status-updates db statuses))
    :tell-waiting
-   (fn [db {[& statuses] :result}]
+   (fn [db {[& statuses] :result} _]
      (apply-status-updates db statuses))
    :tell-stopped
-   (fn [db {[& statuses] :result}]
+   (fn [db {[& statuses] :result} _]
      (apply-status-updates db statuses))
    nil
-   (fn [db response]
+   (fn [db response req]
      (error "response received, no handler found")
      (error response)
+     (error req)
      db)})
 
 (doseq [api-handler (keys api-handlers)]
@@ -73,7 +74,7 @@
  [re-frame/trim-v]
  (fn [db [{:keys [id] :as response}]]
    (let [request (get-in db [:pending-requests id])]
-     ((handler (:method request)) db response))))
+     ((handler (:method request)) db response request))))
 
 (re-frame/register-handler
  :api-message-received
