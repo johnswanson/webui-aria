@@ -65,8 +65,8 @@
     (register-api-handler api-handler)))
 
 (defn handler [method]
-  (fn [db response]
-    (-> ((api-handlers method) db response)
+  (fn [db response request]
+    (-> ((api-handlers method) db response request)
         (update-in [:pending-requests] dissoc (:id response)))))
 
 (re-frame/register-handler
