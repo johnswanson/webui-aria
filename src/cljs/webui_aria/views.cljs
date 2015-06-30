@@ -52,7 +52,7 @@
                   [h-box
                    :justify :center
                    :children [[modern-button
-                               :label [:span "Start!" [:i.md-file-download]]
+                               :label [:span "Start!"]
                                :style {:font-size "15px"}
                                :on-click (handler-fn
                                           (let [str-val @val
@@ -68,7 +68,7 @@
        :showing? showing?
        :position :right-below
        :anchor [modern-button
-                :label [:span "New Download" [:i.md-file-download]]
+                :label [:span "New Download"]
                 :on-click (handler-fn (reset! showing? true))]
        :popover [popover-content-wrapper
                  :showing? showing?

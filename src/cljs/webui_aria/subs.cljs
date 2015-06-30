@@ -26,3 +26,8 @@
  :pending-requests
  (fn [db]
    (reaction (:pending-requests @db))))
+
+(re-frame/register-sub
+ :filters
+ (fn [db]
+   (reaction (:filters @db))))
