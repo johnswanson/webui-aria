@@ -26,7 +26,7 @@
                       (when (= ch t)
                         (dispatch [:get-status {:gid gid}])
                         (recur)))))
-        stop!   (fn [] (put! stop-ch nil))]
+        stop!   (fn [] (put! stop-ch :stopped))]
     (reagent/create-class
      {:component-did-mount (partial start! download)
       :component-will-unmount stop!
