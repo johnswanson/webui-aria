@@ -141,4 +141,3 @@
    (let [active? (get-in db [:filters filt])]
      (assoc-in db [:filters filt] (not active?)))))
 
-

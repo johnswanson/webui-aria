@@ -38,27 +38,41 @@
                   :on-mouse-out  (handler-fn
                                   (reset! hover? false))}])))
 
-(defn new-download-form []
+(defn new-download-form-start-button [showing? val]
+  [modern-button
+   :label [:span "Start!"]
+   :style {:font-size "15px"}
+   :on-click (handler-fn
+              (let [str-val @val
+                    lines (str/split str-val #"\n")]
+                (dispatch [:add-uri {:uris lines}])
+                (reset! val "")
+                (reset! showing? false)))])
+
+(defn new-download-form-textarea [showing? val]
+  [input-textarea
+   :model       @val
+   :on-change   (handler-fn (reset! val event))
+   :width       "800px"
+   :placeholder "URLs (or magnet torrent links) to download, separated by newlines"
+   :rows        5])
+
+(defn new-download-form [showing?]
   (let [val (reagent/atom "")]
-    (fn []
-      [v-box
-       :gap "1em"
-       :children [[input-textarea
-                   :model       @val
-                   :on-change   (handler-fn (reset! val event))
-                   :width       "800px"
-                   :placeholder "URLs (or magnet torrent links) to download, separated by newlines"
-                   :rows        5]
-                  [h-box
-                   :justify :center
-                   :children [[modern-button
-                               :label [:span "Start!"]
-                               :style {:font-size "15px"}
-                               :on-click (handler-fn
-                                          (let [str-val @val
-                                                lines (str/split str-val #"\n")]
-                                            (dispatch [:add-uri {:uris lines}])
-                                            (reset! val "")))]]]]])))
+    (fn [showing?]
+      [popover-content-wrapper
+       :showing? showing?
+       :position :right-below
+       :no-clip? true
+       :body [v-box
+              :gap "1em"
+              :children [[new-download-form-textarea
+                          showing? val]
+                         [h-box
+                          :justify :center
+                          :children [[new-download-form-start-button
+                                      showing? val]]]]]
+       :on-cancel (handler-fn (reset! showing? false))])))
 
 (defn new-download-button []
   (let [showing? (reagent/atom false)
@@ -70,12 +84,7 @@
        :anchor [modern-button
                 :label [:span "New Download"]
                 :on-click (handler-fn (reset! showing? true))]
-       :popover [popover-content-wrapper
-                 :showing? showing?
-                 :position :right-below
-                 :no-clip? true
-                 :body [new-download-form]
-                 :on-cancel (handler-fn (reset! showing? false))]])))
+       :popover [new-download-form showing?]])))
 
 (defn checkbox-for-filter [filt active?]
   [checkbox
