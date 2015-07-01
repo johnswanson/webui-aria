@@ -4,7 +4,7 @@
   (:require [re-frame.core :as re-frame]
             [re-frame.utils :refer [log warn error]]
             [chord.client :refer [ws-ch]]
-            [cljs.core.async :refer [put! chan close!]]
+            [cljs.core.async :refer [put! chan close! timeout]]
             [cljs-uuid-utils.core :as uuid]
             [cemerick.url :refer [map->URL]]
             [webui-aria.utils :as utils]))
@@ -53,6 +53,10 @@
                                                            :params params}])
     id     (re-frame/dispatch [:api-response-received     {:id id
                                                            :result result}])
+    (seq message)
+    (doseq [msg message]
+      (when msg (on-message-received msg)))
+
     :else  (re-frame/dispatch [:api-bad-msg-received      message])))
 
 (defn on-notification-received [{method :method [{:keys [gid]}] :params :as notif}]
@@ -80,11 +84,17 @@
       (on-data-received rec ch)
       (recur))))
 
-(defn send-msgs! [!msgs ch]
-  (go-loop []
-    (when-let [msg (<! !msgs)]
-      (put! ch msg)
-      (recur))))
+(defn send-msgs! [<msgs >send]
+  (go-loop [pending []]
+    (let [t (timeout 100)
+          [msg which-ch] (alts! [t <msgs])]
+      (if (= which-ch t)
+        (do
+          (when (seq pending) (put! >send pending))
+          (recur []))
+        (when msg
+          (recur (conj pending msg)))))))
+
 
 (def connections (atom {}))
 
