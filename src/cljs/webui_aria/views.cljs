@@ -3,7 +3,7 @@
                    [webui-aria.macros :refer [handler-fn]])
   (:require [re-frame.core :as re-frame :refer [dispatch subscribe]]
             [re-frame.utils :refer [log warn error]]
-            [re-com.core :refer [h-split v-box button input-textarea h-box]]
+            [re-com.core :refer [h-split v-box button input-textarea h-box checkbox]]
             [re-com.popover :refer [popover-content-wrapper popover-anchor-wrapper]]
             [reagent.core :as reagent]
             [cljs.core.async :refer [timeout <! put! chan]]
@@ -14,11 +14,11 @@
   [:pre (pr-str request)])
 
 (defn downloads-panel []
-  (let [gids (subscribe [:download-gids])]
+  (let [dls (subscribe [:filtered-downloads])]
     (fn []
       [:div
-       (for [gid @gids]
-         ^{:key gid} [download/component gid])])))
+       (for [dl @dls]
+         ^{:key (:gid dl)} [download/component (:gid dl)])])))
 
 (defn modern-button [& {:keys [label on-click]}]
   (let [hover? (reagent/atom false)]
@@ -77,10 +77,24 @@
                  :body [new-download-form]
                  :on-cancel (handler-fn (reset! showing? false))]])))
 
+(defn checkbox-for-filter [filt active?]
+  [checkbox
+   :model active?
+   :on-change #(dispatch [:filter-toggled filt])
+   :label (name filt)])
+
+(defn filters []
+  (let [filters (subscribe [:filters])]
+    (fn []
+      [v-box
+       :children [(for [[filt active?] @filters]
+                    ^{:key filt} [checkbox-for-filter filt active?])]])))
+
 (defn buttons-and-filters []
   (fn []
     [v-box
-     :children [[new-download-button]]]))
+     :children [[new-download-button]
+                [filters]]]))
 
 (defn home-panel []
   (fn []

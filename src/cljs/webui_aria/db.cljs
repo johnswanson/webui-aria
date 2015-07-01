@@ -19,4 +19,11 @@
                               :secure? false
                               :path "/jsonrpc"})
    :requests {}
-   :downloads {}})
+   :downloads {}
+   :filters {:active   true
+             :waiting  true
+             :paused   true
+             :error    true
+             :complete true
+             :removed  true
+             :linked   false}})

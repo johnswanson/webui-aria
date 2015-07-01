@@ -43,7 +43,13 @@
      (update-in db [:downloads gid] assoc :status :initialized))
    :get-status
    (fn [db {status :result} _]
-     (update-in db [:downloads (:gid status)] merge status))
+     (let [actual-download-status (if (:followed-by status)
+                                    "linked"
+                                    (:status status))]
+       (update-in db [:downloads (:gid status)]
+                  merge
+                  status
+                  {:status actual-download-status})))
    :tell-active
    (fn [db {[& statuses] :result} _]
      (apply-status-updates db statuses))
@@ -127,4 +133,12 @@
 (register-notification-handler :download-completed    :completed)
 (register-notification-handler :download-errored      :errored)
 (register-notification-handler :bt-download-complete  :completed)
+
+(re-frame/register-handler
+ :filter-toggled
+ [re-frame/trim-v]
+ (fn [db [filt]]
+   (let [active? (get-in db [:filters filt])]
+     (assoc-in db [:filters filt] (not active?)))))
+
 

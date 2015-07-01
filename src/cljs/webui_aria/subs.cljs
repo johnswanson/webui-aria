@@ -18,6 +18,30 @@
    (reaction (keys (:downloads @db)))))
 
 (re-frame/register-sub
+ :downloads
+ (fn [db]
+   (reaction (:downloads @db))))
+
+(re-frame/register-sub
+ :filter
+ (fn [db]
+   (let [filters (re-frame/subscribe [:filters])]
+     (reaction (into #{} (->> @filters
+                              (filter #(val %))
+                              (map    #(name (key %)))))))))
+
+(re-frame/register-sub
+ :filtered-downloads
+ (fn [db]
+   (let [f         (re-frame/subscribe [:filter])
+         f-fn      #(%1 (:status %2))
+         downloads (re-frame/subscribe [:downloads])]
+     (reaction
+      (->> @downloads
+           (vals)
+           (filter (partial f-fn @f)))))))
+
+(re-frame/register-sub
  :download
  (fn [db [_ gid]]
    (reaction (get (:downloads @db) gid))))
@@ -31,3 +55,4 @@
  :filters
  (fn [db]
    (reaction (:filters @db))))
+
