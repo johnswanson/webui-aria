@@ -99,6 +99,14 @@
    db))
 
 (re-frame/register-handler
+ :api-bad-msg-received
+ [re-frame/trim-v]
+ (fn [db [msg]]
+   (error "Bad message received")
+   (error (pr-str msg))
+   db))
+
+(re-frame/register-handler
  :api-notification-received
  [re-frame/trim-v]
  (fn [db [notification]]
