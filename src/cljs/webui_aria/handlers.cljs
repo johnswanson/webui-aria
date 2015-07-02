@@ -129,12 +129,12 @@
    (fn [db [gid]]
      (update-in db [:downloads gid] merge {:status status :gid gid}))))
 
-(register-notification-handler :download-started      :started)
-(register-notification-handler :download-paused       :paused)
-(register-notification-handler :download-stopped      :stopped)
-(register-notification-handler :download-completed    :completed)
-(register-notification-handler :download-errored      :errored)
-(register-notification-handler :bt-download-complete  :completed)
+(register-notification-handler :download-started      "active")
+(register-notification-handler :download-paused       "paused")
+(register-notification-handler :download-stopped      "paused")
+(register-notification-handler :download-completed    "complete")
+(register-notification-handler :download-errored      "error")
+(register-notification-handler :bt-download-complete  "complete")
 
 (re-frame/register-handler
  :filter-toggled
