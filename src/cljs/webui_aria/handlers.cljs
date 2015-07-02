@@ -40,7 +40,9 @@
 (def api-handlers
   {:add-uri
    (fn [db {gid :result} _]
-     (update-in db [:downloads gid] assoc :status :initialized))
+     (update-in db [:downloads gid] merge
+                {:status "initialized"
+                 :gid    gid}))
    :get-status
    (fn [db {status :result} _]
      (let [actual-download-status (if (:followed-by status)
@@ -125,7 +127,7 @@
    handler
    [re-frame/trim-v]
    (fn [db [gid]]
-     (assoc-in db [:downloads gid :status] status))))
+     (update-in db [:downloads gid] merge {:status status :gid gid}))))
 
 (register-notification-handler :download-started      :started)
 (register-notification-handler :download-paused       :paused)
