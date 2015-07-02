@@ -56,3 +56,7 @@
  (fn [db]
    (reaction (:filters @db))))
 
+(re-frame/register-sub
+ :new-download-form-showing?
+ #(-> @% :new-download-form-showing reaction))
+

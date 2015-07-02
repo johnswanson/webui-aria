@@ -20,6 +20,7 @@
        (for [dl @dls]
          ^{:key (:gid dl)} [download/component (:gid dl)])])))
 
+
 (defn modern-button [& {:keys [label on-click]}]
   (let [hover? (reagent/atom false)]
     (fn [& {:keys [label on-click style]}]
@@ -38,7 +39,7 @@
                   :on-mouse-out  (handler-fn
                                   (reset! hover? false))}])))
 
-(defn new-download-form-start-button [showing? val]
+(defn new-download-form-start-button [val]
   [modern-button
    :label [:span "Start!"]
    :style {:font-size "15px"}
@@ -46,10 +47,10 @@
               (let [str-val @val
                     lines (str/split str-val #"\n")]
                 (dispatch [:add-uri {:uris lines}])
-                (reset! val "")
-                (reset! showing? false)))])
+                (dispatch [:new-download-form-hide])
+                (reset! val "")))])
 
-(defn new-download-form-textarea [showing? val]
+(defn new-download-form-textarea [val]
   [input-textarea
    :model       @val
    :on-change   (handler-fn (reset! val event))
@@ -66,16 +67,14 @@
        :no-clip? true
        :body [v-box
               :gap "1em"
-              :children [[new-download-form-textarea
-                          showing? val]
+              :children [[new-download-form-textarea val]
                          [h-box
                           :justify :center
-                          :children [[new-download-form-start-button
-                                      showing? val]]]]]
-       :on-cancel (handler-fn (reset! showing? false))])))
+                          :children [[new-download-form-start-button val]]]]]
+       :on-cancel #(dispatch [:new-download-form-hide])])))
 
 (defn new-download-button []
-  (let [showing? (reagent/atom false)
+  (let [showing? (subscribe [:new-download-form-showing?])
         content  (reagent/atom "")]
     (fn []
       [popover-anchor-wrapper
@@ -83,7 +82,7 @@
        :position :right-below
        :anchor [modern-button
                 :label [:span "New Download"]
-                :on-click (handler-fn (reset! showing? true))]
+                :on-click #(dispatch [:new-download-form-show])]
        :popover [new-download-form showing?]])))
 
 (defn checkbox-for-filter [filt active?]

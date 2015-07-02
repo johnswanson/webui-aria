@@ -143,3 +143,14 @@
    (let [active? (get-in db [:filters filt])]
      (assoc-in db [:filters filt] (not active?)))))
 
+(re-frame/register-handler
+ :new-download-form-show
+ [re-frame/trim-v]
+ (fn [db]
+   (assoc db :new-download-form-showing true)))
+
+(re-frame/register-handler
+ :new-download-form-hide
+ [re-frame/trim-v]
+ (fn [db]
+   (assoc db :new-download-form-showing false)))
