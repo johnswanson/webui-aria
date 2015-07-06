@@ -55,6 +55,22 @@
    :tell-active
    (fn [db {[& statuses] :result} _]
      (apply-status-updates db statuses))
+   :remove
+   identity
+   :force-remove
+   identity
+   :unpause
+   identity
+   :unpause-all
+   identity
+   :pause
+   identity
+   :pause-all
+   identity
+   :force-pause
+   identity
+   :force-pause-all
+   identity
    :tell-waiting
    (fn [db {[& statuses] :result} _]
      (apply-status-updates db statuses))

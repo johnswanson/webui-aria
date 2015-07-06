@@ -20,12 +20,20 @@
     (apply vector ps)))
 
 (def method-info
-  {:add-uri      ["aria2.addUri"      [:uris :options :position]]
-   :get-status   ["aria2.tellStatus"  [:gid :keys]]
-   :tell-active  ["aria2.tellActive"  [:keys]]
-   :tell-waiting ["aria2.tellWaiting" [:offset :num]]
-   :tell-stopped ["aria2.tellStopped" [:offset :num :keys]]
-   :multicall    ["system.multicall"  [:methods]]})
+  {:add-uri         ["aria2.addUri"        [:uris :options :position]]
+   :get-status      ["aria2.tellStatus"    [:gid :keys]]
+   :tell-active     ["aria2.tellActive"    [:keys]]
+   :tell-waiting    ["aria2.tellWaiting"   [:offset :num]]
+   :tell-stopped    ["aria2.tellStopped"   [:offset :num :keys]]
+   :remove          ["aria2.remove"        [:gid]]
+   :force-remove    ["aria2.forceRemove"   [:gid]]
+   :unpause         ["aria2.unpause"       [:gid]]
+   :unpause-all     ["aria2.unpauseAll"    []]
+   :pause           ["aria2.pause"         [:gid]]
+   :pause-all       ["aria2.pauseAll"      []]
+   :force-pause     ["aria2.forcePause"    [:gid]]
+   :force-pause-all ["aria2.forcePauseAll" []]
+   :multicall       ["system.multicall"    [:methods]]})
 
 (defn new-id [] (uuid/uuid-string (uuid/make-random-uuid)))
 
