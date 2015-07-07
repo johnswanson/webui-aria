@@ -16,9 +16,9 @@
 (defn downloads-panel []
   (let [dls (subscribe [:filtered-downloads])]
     (fn []
-      [:div
-       (for [dl @dls]
-         ^{:key (:gid dl)} [download/component (:gid dl)])])))
+      [v-box
+       :children [(for [dl @dls]
+                    ^{:key (:gid dl)} [download/component (:gid dl)])]])))
 
 
 (defn modern-button [& {:keys [label on-click]}]

@@ -170,3 +170,21 @@
  [re-frame/trim-v]
  (fn [db]
    (assoc db :new-download-form-showing false)))
+
+(re-frame/register-handler
+ :pause-download
+ [re-frame/trim-v]
+ (fn [db [dl]]
+   (let [gid (:gid dl)]
+     (when gid
+       (re-frame/dispatch [:pause {:gid gid}])
+       db))))
+
+(re-frame/register-handler
+ :resume-download
+ [re-frame/trim-v]
+ (fn [db [dl]]
+   (let [gid (:gid dl)]
+     (when gid
+       (re-frame/dispatch [:unpause {:gid gid}])
+       db))))
