@@ -105,11 +105,26 @@
                 [filters]]]))
 
 (defn home-panel []
-  (fn []
-    [h-split
-     :panel-1 [buttons-and-filters]
-     :panel-2 [downloads-panel]
-     :initial-split 20]))
+  (let [stop-ch (chan)
+        start!  (fn []
+                  (go-loop []
+                    (let [t (timeout 1000)
+                          [_ ch] (alts! [t stop-ch])]
+                      (when (= ch t)
+                        (dispatch [:tell-active])
+                        (dispatch [:tell-waiting {:offset 0 :num 100}])
+                        (dispatch [:tell-stopped {:offset 0 :num 100}])
+                        (recur)))))
+        stop!   (fn [] (put! stop-ch :stopped))]
+    (reagent/create-class
+     {:component-did-mount start!
+      :component-will-unmount stop!
+      :reagent-render
+      (fn []
+        [h-split
+         :panel-1 [buttons-and-filters]
+         :panel-2 [downloads-panel]
+         :initial-split 20])})))
 
 (defn about-panel []
   (fn []

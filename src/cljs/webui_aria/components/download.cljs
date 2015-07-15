@@ -84,27 +84,14 @@
   [:span status])
 
 (defn component [gid]
-  (let [download (subscribe [:download gid])
-        stop-ch (chan)
-        start!  (fn [download]
-                  (go-loop []
-                    (let [t (timeout 1000)
-                          [_ ch] (alts! [t stop-ch])]
-                      (when (= ch t)
-                        (dispatch [:get-status {:gid gid}])
-                        (recur)))))
-        stop!   (fn [] (put! stop-ch :stopped))]
-    (reagent/create-class
-     {:component-did-mount (partial start! download)
-      :component-will-unmount stop!
-      :reagent-render
-      (fn [gid]
-        (let [dl @download]
-          [v-box
-           :style {:position "relative"}
-           :children [[filename dl]
-                      [status dl]
-                      [controls dl]
-                      [speeds dl]
-                      [:pre (pr-str @(subscribe [:download gid]))]
-                      [progress dl]]]))})))
+  (let [download (subscribe [:download gid])]
+    (fn [gid]
+      (let [dl @download]
+        [v-box
+         :style {:position "relative"}
+         :children [[filename dl]
+                    [status dl]
+                    [controls dl]
+                    [speeds dl]
+                    [:pre (pr-str @(subscribe [:download gid]))]
+                    [progress dl]]]))))
