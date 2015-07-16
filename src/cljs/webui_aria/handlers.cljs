@@ -39,19 +39,9 @@
 
 (def api-handlers
   {:add-uri
-   (fn [db {gid :result} _]
-     (update-in db [:downloads gid] merge
-                {:status "initialized"
-                 :gid    gid}))
+   identity
    :get-status
-   (fn [db {status :result} _]
-     (let [actual-download-status (if (:followed-by status)
-                                    "linked"
-                                    (:status status))]
-       (update-in db [:downloads (:gid status)]
-                  merge
-                  status
-                  {:status actual-download-status})))
+   identity
    :tell-active
    (fn [db {[& statuses] :result} _]
      (apply-status-updates db statuses))

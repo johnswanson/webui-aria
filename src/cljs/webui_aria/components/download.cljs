@@ -1,11 +1,9 @@
 (ns webui-aria.components.download
-  (:require-macros [cljs.core.async.macros :refer [go-loop]])
   (:require [re-frame.core :as re-frame :refer [dispatch subscribe]]
             [re-frame.utils :refer [log warn error]]
             [re-com.core :refer [v-box h-box md-icon-button]]
             [reagent.core :as reagent]
-            [goog.format :as fmt]
-            [cljs.core.async :refer [timeout <! put! chan]]))
+            [goog.format :as fmt]))
 
 (defn download-speed [dl]
   (fn [dl]
