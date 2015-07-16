@@ -37,8 +37,9 @@
 
 (defn filename [dl]
   (fn [dl]
-    [:span (or (get-in dl [:bittorrent :info :name])
-                (-> dl :files first :path))]))
+    [:span (or
+            (get-in dl [:bittorrent :info :name])
+            (-> dl :files first :path))]))
 
 (defn speeds [dl]
   [h-box
@@ -66,20 +67,20 @@
 (defn controls [{:keys [status] :as download}]
   (fn [{:keys [status] :as download}]
     (let [dis? (case status
-                 "active"   {:play :disabled :pause nil       :stop nil}
-                 "waiting"  {:play :disabled :pause :disabled :stop :disabled}
-                 "paused"   {:play nil       :pause :disabled :stop nil}
-                 "error"    {:play :disabled :pause :disabled :stop :disabled}
-                 "complete" {:play :disabled :pause :disabled :stop :disabled}
-                 "removed"  {:play :disabled :pause :disabled :stop :disabled}
-                 "linked"   {:play :disabled :pause :disabled :stop :disabled})]
+                 :active   {:play :disabled :pause nil       :stop nil}
+                 :waiting  {:play :disabled :pause :disabled :stop :disabled}
+                 :paused   {:play nil       :pause :disabled :stop nil}
+                 :error    {:play :disabled :pause :disabled :stop :disabled}
+                 :complete {:play :disabled :pause :disabled :stop :disabled}
+                 :removed  {:play :disabled :pause :disabled :stop :disabled}
+                 :linked   {:play :disabled :pause :disabled :stop :disabled})]
       [h-box
        :children [(or [pause-button (:pause dis?) download])
                   (or [play-button  (:play dis?)  download])
                   (or [stop-button  (:stop dis?)  download])]])))
 
 (defn status [{:keys [status]}]
-  [:span status])
+  [:span (name status)])
 
 (defn component [gid]
   (let [download (subscribe [:download gid])]

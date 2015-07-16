@@ -3,7 +3,8 @@
             [re-frame.utils :refer [error warn log]]
             [cljs-uuid-utils.core :as uuid]
             [webui-aria.db :as db]
-            [webui-aria.api :as api]))
+            [webui-aria.api :as api]
+            [webui-aria.schema.download :refer [->download]]))
 
 (re-frame/register-handler
  :initialize-db
@@ -32,8 +33,11 @@
                   :request request)))))
 
 (defn apply-status-updates [db statuses]
-  (reduce (fn [db status]
-            (update-in db [:downloads (:gid status)] merge status))
+  (reduce (fn [db download]
+            (let [dl (->download download)]
+              (if (:error dl)
+                (do (error "failed to coerce download!" (:error dl)) db)
+                (update-in db [:downloads (:gid dl)] merge dl))))
           db
           statuses))
 

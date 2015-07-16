@@ -28,7 +28,7 @@
    (let [filters (re-frame/subscribe [:filters])]
      (reaction (into #{} (->> @filters
                               (filter #(val %))
-                              (map    #(name (key %)))))))))
+                              (map    #(key %))))))))
 
 (re-frame/register-sub
  :filtered-downloads
