@@ -99,8 +99,10 @@
    :uris             [{:uri    s/Str
                        :status (s/enum :used :waiting)}]})
 
+(def Status (s/enum :active :waiting :paused :error :complete :removed :linked))
+
 (def Download
-  {:status                       (s/enum :active :waiting :paused :error :complete :removed)
+  {:status                       Status
    :gid                          s/Str
    :total-length                 s/Int
    :completed-length             s/Int
@@ -120,5 +122,10 @@
    (s/optional-key :belongs-to)  s/Str
    (s/optional-key :bittorrent)  BittorrentData})
 
-(def ->download (coerce/coercer Download matcher))
+(def coercer (coerce/coercer Download matcher))
+
+(defn ->download [d]
+  (coercer (if (:followed-by d)
+             (assoc d :status :linked)
+             d)))
 
