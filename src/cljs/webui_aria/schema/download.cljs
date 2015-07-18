@@ -86,9 +86,9 @@
 
 (def BittorrentData {(s/optional-key :comment)       s/Str
                      (s/optional-key :creation-date) s/Int
-                     :announce-list                  [[s/Str]]
-                     :mode                           (s/enum :single :multi)
-                     :info                           {:name s/Str}})
+                     (s/optional-key :mode)          (s/enum :single :multi)
+                     (s/optional-key :info)          {:name s/Str}
+                     (s/optional-key :announce-list) [[s/Str]]})
 
 (def File
   {:index            s/Int
