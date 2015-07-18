@@ -104,17 +104,19 @@
 (re-frame/register-handler
  :api-error-received
  [re-frame/trim-v]
- (fn [db [error ch]]
-   (error (clj->js error))
+ (fn [db [err ch]]
    (api/disconnect! ch)
+   (re-frame/dispatch [:api-connection-error])
    db))
 
 (re-frame/register-handler
  :api-unknown-received
  [re-frame/trim-v]
- (fn [db [input]]
-   (error (clj->js input))
+ (fn [db [input ch]]
+   (api/disconnect! ch)
+   (re-frame/dispatch [:api-connection-error])
    db))
+
 
 (re-frame/register-handler
  :api-bad-msg-received
@@ -182,3 +184,21 @@
      (when gid
        (re-frame/dispatch [:unpause {:gid gid}])
        db))))
+
+(re-frame/register-handler
+ :api-connecting
+ [re-frame/trim-v]
+ (fn [db]
+   (assoc db :api-connection-status :connecting)))
+
+(re-frame/register-handler
+ :api-connection-successful
+ [re-frame/trim-v]
+ (fn [db]
+   (assoc db :api-connection-status :connected)))
+
+(re-frame/register-handler
+ :api-connection-error
+ [re-frame/trim-v]
+ (fn [db]
+   (assoc db :api-connection-status :disconnected)))

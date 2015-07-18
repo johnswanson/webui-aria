@@ -60,3 +60,8 @@
  :new-download-form-showing?
  #(-> @% :new-download-form-showing reaction))
 
+(re-frame/register-sub
+ :api-connection-status
+ (fn [db]
+   (reaction (:api-connection-status @db))))
+

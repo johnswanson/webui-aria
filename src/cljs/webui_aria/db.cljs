@@ -7,7 +7,7 @@
                 :port 6800
                 :secure? false
                 :path "/jsonrpc"}
-
+   :api-connection-status :disconnected
    :requests {}
    :downloads {}
    :filters {:active   true

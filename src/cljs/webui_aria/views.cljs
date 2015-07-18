@@ -104,6 +104,23 @@
      :children [[new-download-button]
                 [filters]]]))
 
+(defn connection-status-bar* [connection-status]
+  (let [color (case connection-status
+                :connected "#0C0"
+                :disconnected "#C00"
+                "#000")
+        connected-str (-> connection-status name str/capitalize)]
+    [h-box
+     :justify :center
+     :children [[v-box :justify :center :children [[:span connected-str]]]]
+     :height "2em"
+     :style {:background-color color}]))
+
+(defn connection-status-bar []
+  (let [connection-status (subscribe [:api-connection-status])]
+    (fn []
+      [connection-status-bar* @connection-status])))
+
 (defn home-panel []
   (let [stop-ch (chan)
         start!  (fn []
@@ -121,10 +138,12 @@
       :component-will-unmount stop!
       :reagent-render
       (fn []
-        [h-split
-         :panel-1 [buttons-and-filters]
-         :panel-2 [downloads-panel]
-         :initial-split 20])})))
+        [v-box
+         :children [[connection-status-bar :connected]
+                    [h-split
+                     :panel-1 [buttons-and-filters]
+                     :panel-2 [downloads-panel]
+                     :initial-split 20]]])})))
 
 (defn about-panel []
   (fn []
