@@ -4,7 +4,7 @@
   (:require [re-frame.core :as re-frame]
             [re-frame.utils :refer [log warn error]]
             [chord.client :refer [ws-ch]]
-            [cljs.core.async :refer [put! chan close! timeout]]
+            [cljs.core.async :refer [put! chan close! timeout sliding-buffer]]
             [cljs-uuid-utils.core :as uuid]
             [cemerick.url :refer [map->URL]]
             [webui-aria.utils :as utils]))
@@ -112,7 +112,7 @@
                 [:api-connection-status-changed (:status new)]))))
 
 (defn connect! [desired-config]
-  (let [conn (chan)]
+  (let [conn (chan (sliding-buffer 10))]
     (swap! state assoc :config desired-config :conn conn :status :connecting)
     (go
       (let [{:keys [ws-channel error]}
