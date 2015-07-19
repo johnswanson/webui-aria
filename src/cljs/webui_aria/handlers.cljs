@@ -107,7 +107,7 @@
  (fn [db [err]]
    (error err)
    (api/disconnect!)
-   db))
+   (dissoc db :downloads)))
 
 (re-frame/register-handler
  :api-unknown-received
@@ -115,7 +115,7 @@
  (fn [db [input]]
    (error input)
    (api/disconnect!)
-   db))
+   (dissoc db :downloads)))
 
 
 (re-frame/register-handler
