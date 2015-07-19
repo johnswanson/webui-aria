@@ -48,12 +48,12 @@
            :method method-str
            :params (params as order))))
 
-(defn on-data-received [val config]
+(defn on-data-received [val]
   (let [{:keys [error message] :as input} (utils/->kw-kebab val)]
     (cond
       message (re-frame/dispatch [:api-message-received message])
-      error   (re-frame/dispatch [:api-error-received   error config])
-      :else   (re-frame/dispatch [:api-unknown-received input config]))))
+      error   (re-frame/dispatch [:api-error-received   error])
+      :else   (re-frame/dispatch [:api-unknown-received input]))))
 
 (defn on-message-received [{:keys [id method params result] :as message}]
   (cond
@@ -86,10 +86,10 @@
                        :path path})]
     (str url)))
 
-(defn receive-msgs! [ch config]
+(defn receive-msgs! [ch]
   (go-loop []
     (when-let [rec (<! ch)]
-      (on-data-received rec config)
+      (on-data-received rec)
       (recur))))
 
 (defn send-msgs! [<msgs >send]
@@ -103,31 +103,47 @@
         (when msg
           (recur (conj pending msg)))))))
 
-(def connections (atom {}))
+(defonce state (atom {:status :disconnected}))
 
-(defn connection-map [conns]
-  (into {} (map (fn [[a b]] [b a]) conns)))
+(add-watch state :status-change
+           (fn [_ _ old new]
+             (when (not= (:status old) (:status new))
+               (re-frame/dispatch
+                [:api-connection-status-changed (:status new)]))))
 
-(defn disconnect! [config]
-  (swap! connections (fn [conns]
-                       (let [ch (conns config)]
-                         (when ch (close! ch))
-                         (dissoc conns config)))))
-
-(defn request!
-  [config request]
-  (if-let [conn (@connections config)] 
-    (put! conn request)
+(defn connect! [desired-config]
+  (let [conn (chan)]
+    (swap! state assoc :config desired-config :conn conn :status :connecting)
     (go
-      (let [_ (re-frame/dispatch [:api-connecting])
-            {:keys [ws-channel error]} (<! (ws-ch (url-from-config config)
-                                                  {:format :json}))]
+      (let [{:keys [ws-channel error]}
+            (<! (ws-ch (url-from-config desired-config)
+                       {:format :json}))]
         (if error
-          (re-frame/dispatch [:api-connection-error])
-          (let [_ (receive-msgs! ws-channel config)
-                conn (doto (chan)
-                       (send-msgs! ws-channel))]
-            (re-frame/dispatch [:api-connection-successful])
-            (swap! connections assoc config conn)
-            (put! conn request)))))))
+          (swap! state assoc :status :disconnected)
+          (do
+            (receive-msgs! ws-channel)
+            (send-msgs! conn ws-channel)
+            (swap! state assoc :status :connected)))))
+    conn))
+
+(defn disconnect! []
+  (when-let [conn (:conn @state)]  (close! conn))
+  (swap! state assoc :status :disconnected))
+
+(defn request! [desired-config request]
+  (let [{:keys [config conn status]} @state]
+    (if (= config desired-config)
+      (case status
+        :connected
+        (put! conn request)
+
+        :connecting (put! conn request)
+
+        :disconnected
+        (let [conn (connect! desired-config)]
+          (put! conn request)))
+
+      (let [conn (connect! desired-config)]
+        (disconnect!)
+        (put! conn request)))))
 

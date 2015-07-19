@@ -104,17 +104,17 @@
 (re-frame/register-handler
  :api-error-received
  [re-frame/trim-v]
- (fn [db [err ch]]
-   (api/disconnect! ch)
-   (re-frame/dispatch [:api-connection-error])
+ (fn [db [err]]
+   (error err)
+   (api/disconnect!)
    db))
 
 (re-frame/register-handler
  :api-unknown-received
  [re-frame/trim-v]
- (fn [db [input ch]]
-   (api/disconnect! ch)
-   (re-frame/dispatch [:api-connection-error])
+ (fn [db [input]]
+   (error input)
+   (api/disconnect!)
    db))
 
 
@@ -186,19 +186,9 @@
        db))))
 
 (re-frame/register-handler
- :api-connecting
+ :api-connection-status-changed
  [re-frame/trim-v]
- (fn [db]
-   (assoc db :api-connection-status :connecting)))
+ (fn [db [new-status]]
+   (assoc db :api-connection-status new-status)))
 
-(re-frame/register-handler
- :api-connection-successful
- [re-frame/trim-v]
- (fn [db]
-   (assoc db :api-connection-status :connected)))
 
-(re-frame/register-handler
- :api-connection-error
- [re-frame/trim-v]
- (fn [db]
-   (assoc db :api-connection-status :disconnected)))
