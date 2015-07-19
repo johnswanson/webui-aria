@@ -1,7 +1,7 @@
 (ns webui-aria.components.download
   (:require [re-frame.core :as re-frame :refer [dispatch subscribe]]
             [re-frame.utils :refer [log warn error]]
-            [re-com.core :refer [v-box h-box md-icon-button]]
+            [re-com.core :refer [v-box h-box box border md-icon-button]]
             [reagent.core :as reagent]
             [goog.format :as fmt]))
 
@@ -27,13 +27,13 @@
 (defn progress [dl]
   (fn [dl]
     (let [pct (* 100 (/ (:completed-length dl) (:total-length dl)))]
-      [:div {:style {:position "absolute"
-                     :top "0px"
-                     :left "0px"
-                     :z-index "-1"
-                     :height "80%"
-                     :background-color "#DDD"
-                     :width (str pct "%")}}])))
+      [box :child [:div {:style {:position "absolute"
+                                 :top "0px"
+                                 :left "0px"
+                                 :z-index "-1"
+                                 :height "100%"
+                                 :background-color "#DDD"
+                                 :width (str pct "%")}}]])))
 
 (defn filename [dl]
   (fn [dl]
@@ -86,11 +86,12 @@
   (let [download (subscribe [:download gid])]
     (fn [gid]
       (let [dl @download]
-        [v-box
-         :style {:position "relative"}
-         :children [[filename dl]
-                    [status dl]
-                    [controls dl]
-                    [speeds dl]
-                    [:pre (pr-str @(subscribe [:download gid]))]
-                    [progress dl]]]))))
+        [border
+         :border "1px solid black"
+         :child [v-box
+                 :style {:position "relative"}
+                 :children [[filename dl]
+                            [status dl]
+                            [controls dl]
+                            [speeds dl]
+                            [progress dl]]]]))))

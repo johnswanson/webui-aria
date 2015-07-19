@@ -17,6 +17,7 @@
   (let [dls (subscribe [:filtered-downloads])]
     (fn []
       [v-box
+       :width "100%"
        :children [(for [dl @dls]
                     ^{:key (:gid dl)} [download/component (:gid dl)])]])))
 
