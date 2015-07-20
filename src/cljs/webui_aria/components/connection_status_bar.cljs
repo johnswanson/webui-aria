@@ -5,35 +5,31 @@
             [webui-aria.style :as style]))
 
 (defn connection-status-label-style [connected?]
-  {:style {:font-family "'Roboto', sans-serif"
-           :font-weight "100"
-           :font-size "24px"}})
+  {:font-family "'Roboto', sans-serif"
+   :font-weight "100"
+   :font-size "24px"})
 
 (defn connection-status-bar-style [connected?]
-  {:background-color (if connected?
-                       style/base02
-                       style/base1)
-   :transition "all .5s ease-in"
-   :color (if connected? style/magenta style/orange)})
+  {:background-color (if connected? style/base02 style/base03)
+   :transition "all .2s ease-in"
+   :color (if connected? style/cyan style/red)})
 
 (defn connection-status-label [str connected?]
-  [:span (connection-status-label-style connected?) str])
+  [com/label :style (connection-status-label-style connected?) :label str])
 
 (defn connection-status-bar* [connection-status]
   (let [connected? (= connection-status :connected)
-        color (if connected?
-                "#E73356"
-                "#266C73")
         connected-str (if connected? "Connected" "Disconnected")]
     [com/h-box
      :gap "1em"
      :justify :end
      :children [(when (= connection-status :connecting) [com/throbber
                                                          :size :small
-                                                         :color color])
+                                                         :color style/red])
                 [connection-status-label connected-str connected?]
-                [com/md-icon-button :md-icon-name "md-settings"]]
-     :height "3em"
+                [com/gap :size "10px"]
+                [com/md-icon-button :md-icon-name "md-settings" :size :larger]
+                [com/gap :size "150px"]]
      :style (connection-status-bar-style connected?)]))
 
 (defn view []
