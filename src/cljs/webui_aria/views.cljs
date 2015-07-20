@@ -3,11 +3,13 @@
                    [webui-aria.macros :refer [handler-fn]])
   (:require [re-frame.core :as re-frame :refer [dispatch subscribe]]
             [re-frame.utils :refer [log warn error]]
-            [re-com.core :refer [h-split v-box button input-textarea h-box checkbox]]
+            [re-com.core :as com]
             [re-com.popover :refer [popover-content-wrapper popover-anchor-wrapper]]
             [reagent.core :as reagent]
             [cljs.core.async :refer [timeout <! put! chan]]
             [webui-aria.components.download :as download]
+            [webui-aria.components.connection-status-bar :as connection-status-bar]
+            [webui-aria.style :as style]
             [clojure.string :as str]))
 
 (defn request-render [request]
@@ -16,7 +18,7 @@
 (defn downloads-panel []
   (let [dls (subscribe [:filtered-downloads])]
     (fn []
-      [v-box
+      [com/v-box
        :width "100%"
        :children [(for [dl @dls]
                     ^{:key (:gid dl)} [download/component (:gid dl)])]])))
@@ -25,7 +27,7 @@
 (defn modern-button [& {:keys [label on-click]}]
   (let [hover? (reagent/atom false)]
     (fn [& {:keys [label on-click style]}]
-      [button
+      [com/button
        :label    label
        :on-click on-click
        :style    (merge {:color            "black"
@@ -52,7 +54,7 @@
                 (reset! val "")))])
 
 (defn new-download-form-textarea [val]
-  [input-textarea
+  [com/input-textarea
    :model       @val
    :on-change   (handler-fn (reset! val event))
    :width       "800px"
@@ -66,10 +68,10 @@
        :showing? showing?
        :position :right-below
        :no-clip? true
-       :body [v-box
+       :body [com/v-box
               :gap "1em"
               :children [[new-download-form-textarea val]
-                         [h-box
+                         [com/h-box
                           :justify :center
                           :children [[new-download-form-start-button val]]]]]
        :on-cancel #(dispatch [:new-download-form-hide])])))
@@ -87,7 +89,7 @@
        :popover [new-download-form showing?]])))
 
 (defn checkbox-for-filter [filt active?]
-  [checkbox
+  [com/checkbox
    :model active?
    :on-change #(dispatch [:filter-toggled filt])
    :label (name filt)])
@@ -95,32 +97,15 @@
 (defn filters []
   (let [filters (subscribe [:filters])]
     (fn []
-      [v-box
+      [com/v-box
        :children [(for [[filt active?] @filters]
                     ^{:key filt} [checkbox-for-filter filt active?])]])))
 
 (defn buttons-and-filters []
   (fn []
-    [v-box
+    [com/v-box
      :children [[new-download-button]
                 [filters]]]))
-
-(defn connection-status-bar* [connection-status]
-  (let [color (case connection-status
-                :connected "#0C0"
-                :disconnected "#C00"
-                "#000")
-        connected-str (-> connection-status name str/capitalize)]
-    [h-box
-     :justify :center
-     :children [[v-box :justify :center :children [[:span connected-str]]]]
-     :height "2em"
-     :style {:background-color color}]))
-
-(defn connection-status-bar []
-  (let [connection-status (subscribe [:api-connection-status])]
-    (fn []
-      [connection-status-bar* @connection-status])))
 
 (defn home-panel []
   (let [stop-ch (chan)
@@ -139,9 +124,9 @@
       :component-will-unmount stop!
       :reagent-render
       (fn []
-        [v-box
-         :children [[connection-status-bar :connected]
-                    [h-split
+        [com/v-box
+         :children [[connection-status-bar/view]
+                    [com/h-split
                      :panel-1 [buttons-and-filters]
                      :panel-2 [downloads-panel]
                      :initial-split 20]]])})))
