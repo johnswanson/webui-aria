@@ -1,16 +1,16 @@
 (defproject webui-aria "0.1.0-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/clojurescript "0.0-3211"]
+                 [org.clojure/clojurescript "0.0-3308"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [jarohen/chord "0.6.0"]
                  [com.cemerick/url "0.1.1"]
-                 [com.lucasbradstreet/cljs-uuid-utils "1.0.1"]
+                 [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
                  [prismatic/schema "0.4.3"]
                  [reagent "0.5.0"]
                  [re-frame "0.4.1"]
                  [re-com "0.5.4"]
                  [secretary "1.2.3"]
-                 [camel-snake-kebab "0.3.1"]]
+                 [camel-snake-kebab "0.3.2"]]
 
   :source-paths ["src/clj"]
 
