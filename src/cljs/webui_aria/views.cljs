@@ -16,12 +16,15 @@
   (let [stop-ch (chan)
         start!  (fn []
                   (go-loop []
-                    (let [t (timeout 1000)
+                    (let [editing-config? @(subscribe [:connection-config-form-showing?])
+                          t (timeout 1000)
                           [_ ch] (alts! [t stop-ch])]
-                      (when (= ch t)
-                        (dispatch [:tell-active])
-                        (dispatch [:tell-waiting {:offset 0 :num 100}])
-                        (dispatch [:tell-stopped {:offset 0 :num 100}])
+                      (if-not editing-config?
+                        (when (= ch t)
+                          (dispatch [:tell-active])
+                          (dispatch [:tell-waiting {:offset 0 :num 100}])
+                          (dispatch [:tell-stopped {:offset 0 :num 100}])
+                          (recur))
                         (recur)))))
         stop!   (fn [] (put! stop-ch :stopped))]
     (reagent/create-class

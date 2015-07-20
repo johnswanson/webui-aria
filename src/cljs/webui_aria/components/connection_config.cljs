@@ -7,23 +7,34 @@
             [webui-aria.style :as style]))
 
 (defn connection-config-input [kw regex]
-  (let [old-val (subscribe [kw])
-        val     (atom @old-val)]
+  (let [old-val     (subscribe [kw])
+        val         (atom @old-val)
+        on-change   #(dispatch [(keyword (str (name kw) "-changed")) %])
+        on-key-down #(case (.-which %)
+                       13 (do
+                            (on-change (-> % .-target .-value))
+                            (dispatch [:connection-config-form-hide]))
+                       27 (dispatch [:connection-config-form-hide])
+                       nil)]
     (fn []
       [com/h-box
        :gap "2em"
-       :children [[com/label
-                   :label (name kw)]
+       :children [[com/v-box :children [[com/label :label (name kw)]] :justify :center]
+                  [com/gap :size "1"]
                   [com/input-text
+                   :attr {:on-key-down on-key-down}
                    :model val
                    :validation-regex regex
-                   :on-change #(dispatch [(keyword (str (name kw) "-changed")) %])]]])))
+                   :on-change on-change]]])))
 
 (defn token-input []
   (connection-config-input :connection-token #".*"))
 
+(def host-regex
+  #"^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?$")
+
 (defn host-input []
-  (connection-config-input :connection-host #"^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?$"))
+  (connection-config-input :connection-host host-regex))
 
 (defn port-input []
   (connection-config-input :connection-port #"^\d+$"))
