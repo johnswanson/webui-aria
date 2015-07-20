@@ -1,8 +1,10 @@
 (ns webui-aria.components.connection-status-bar
-  (:require [re-frame.core :refer [subscribe]]
+  (:require [re-frame.core :refer [subscribe dispatch]]
             [re-com.core :as com]
             [clojure.string :as str]
-            [webui-aria.style :as style]))
+            [webui-aria.style :as style]
+            [webui-aria.components.connection-config-button :as connection-config-button]))
+
 
 (defn connection-status-label-style [connected?]
   {:font-family "'Roboto', sans-serif"
@@ -28,7 +30,7 @@
                                                          :color style/red])
                 [connection-status-label connected-str connected?]
                 [com/gap :size "10px"]
-                [com/md-icon-button :md-icon-name "md-settings" :size :larger]
+                [connection-config-button/view]
                 [com/gap :size "150px"]]
      :style (connection-status-bar-style connected?)]))
 

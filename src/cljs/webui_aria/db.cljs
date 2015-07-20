@@ -2,7 +2,7 @@
   (:require [schema.core :as s :include-macros true]))
 
 (def default-db
-  {:connection {:token nil
+  {:connection {:token ""
                 :host "aria.mkn.io"
                 :port 6800
                 :secure? false

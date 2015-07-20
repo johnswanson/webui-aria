@@ -12,6 +12,24 @@
  (fn [db]
    (reaction (:connection @db))))
 
+(defn register-connection-sub [kw]
+  (re-frame/register-sub
+   (keyword (str "connection-" (name kw)))
+   (fn [db]
+     (let [connection (re-frame/subscribe [:connection])]
+       (reaction (str (kw @connection)))))))
+
+(register-connection-sub :token)
+(register-connection-sub :host)
+(register-connection-sub :port)
+(register-connection-sub :secure?)
+(register-connection-sub :path)
+
+(re-frame/register-sub
+ :connection-config-form-showing?
+ (fn [db]
+   (reaction (:connection-config-form-showing? @db))))
+
 (re-frame/register-sub
  :download-gids
  (fn [db]

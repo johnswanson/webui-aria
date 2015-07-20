@@ -191,4 +191,44 @@
  (fn [db [new-status]]
    (assoc db :api-connection-status new-status)))
 
+(re-frame/register-handler
+ :connection-config-form-show
+ [re-frame/trim-v]
+ (fn [db]
+   (assoc db :connection-config-form-showing? true)))
 
+(re-frame/register-handler
+ :connection-config-form-hide
+ [re-frame/trim-v]
+ (fn [db]
+   (assoc db :connection-config-form-showing? false)))
+
+(re-frame/register-handler
+ :connection-port-changed
+ [re-frame/trim-v]
+ (fn [db [port]]
+   (assoc-in db [:connection :port] port)))
+
+(re-frame/register-handler
+ :connection-host-changed
+ [re-frame/trim-v]
+ (fn [db [host]]
+   (assoc-in db [:connection :host] host)))
+
+(re-frame/register-handler
+ :connection-token-changed
+ [re-frame/trim-v]
+ (fn [db [token]]
+   (assoc-in db [:connection :token] token)))
+
+(re-frame/register-handler
+ :connection-secure?-changed
+ [re-frame/trim-v]
+ (fn [db [secure?]]
+   (assoc-in db [:connection :secure?] secure?)))
+
+(re-frame/register-handler
+ :connection-path-changed
+ [re-frame/trim-v]
+ (fn [db [path]]
+   (assoc-in db [:connection :path] path)))
