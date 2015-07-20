@@ -13,7 +13,7 @@
         on-key-down #(case (.-which %)
                        13 (do
                             (on-change (-> % .-target .-value))
-                            (dispatch [:connection-config-form-hide]))
+                            (dispatch [:connection-config-form-save-and-hide]))
                        27 (dispatch [:connection-config-form-hide])
                        nil)]
     (fn []
@@ -40,7 +40,19 @@
   (connection-config-input :connection-port #"^\d+$"))
 
 (defn secure?-input []
-  (connection-config-input :connection-secure? #".*"))
+  (let [old-val   (subscribe [:connection-secure?])
+        val       (reagent/atom @old-val)
+        on-change #(do
+                     (reset! val %)
+                     (dispatch [:connection-secure?-changed %]))]
+    (fn []
+      [com/h-box
+       :gap "2em"
+       :children [[com/v-box :children [[com/label :label "secure?"]] :justify :center]
+                  [com/gap :size "1"]
+                  [com/checkbox
+                   :model val
+                   :on-change on-change]]])))
 
 (defn path-input []
   (connection-config-input :connection-path #"^/[-\w]*$"))
@@ -49,7 +61,6 @@
   [popover-content-wrapper
    :showing? showing?
    :position :below-left
-   :no-clip? true
    :body [com/v-box
           :gap "1em"
           :children [[token-input]
@@ -57,4 +68,4 @@
                      [port-input]
                      [secure?-input]
                      [path-input]]]
-   :on-cancel #(dispatch [:connection-config-form-hide])])
+   :on-cancel #(dispatch [:connection-config-form-save-and-hide])])

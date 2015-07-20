@@ -19,10 +19,15 @@
      (let [connection (re-frame/subscribe [:connection])]
        (reaction (str (kw @connection)))))))
 
+(re-frame/register-sub
+ :connection-secure?
+ (fn [db]
+   (let [connection (re-frame/subscribe [:connection])]
+     (reaction (:secure? @connection)))))
+
 (register-connection-sub :token)
 (register-connection-sub :host)
 (register-connection-sub :port)
-(register-connection-sub :secure?)
 (register-connection-sub :path)
 
 (re-frame/register-sub
