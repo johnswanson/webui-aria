@@ -4,7 +4,8 @@
             [cljs-uuid-utils.core :as uuid]
             [webui-aria.db :as db]
             [webui-aria.api :as api]
-            [webui-aria.schema.download :refer [->download]]))
+            [webui-aria.schema.download :refer [->download]]
+            [webui-aria.local-storage :as local-storage]))
 
 (re-frame/register-handler
  :initialize-db
@@ -210,6 +211,7 @@
  :connection-config-form-save-and-hide
  [re-frame/trim-v]
  (fn [db]
+   (local-storage/set-item! :config (pr-str (:connection-form db)))
    (assoc db
           :connection (:connection-form db)
           :connection-config-form-showing? false

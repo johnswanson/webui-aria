@@ -1,12 +1,19 @@
 (ns webui-aria.db
-  (:require [schema.core :as s :include-macros true]))
+  (:require [schema.core :as s :include-macros true]
+            [webui-aria.local-storage :as local-storage]
+            [cljs.reader]))
+
+(defn try-read [key]
+  (try (cljs.reader/read-string (local-storage/get-item key))
+       (catch js/Error _ nil)))
 
 (def default-db
-  {:connection {:token ""
-                :host "aria.mkn.io"
-                :port 6800
-                :secure? false
-                :path "/jsonrpc"}
+  {:connection (or (try-read :config)
+                   {:token ""
+                    :host "aria.mkn.io"
+                    :port 6800
+                    :secure? false
+                    :path "/jsonrpc"})
    :api-connection-status :disconnected
    :requests {}
    :downloads {}
