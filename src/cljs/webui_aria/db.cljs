@@ -10,7 +10,7 @@
 (def default-db
   {:connection (or (try-read :config)
                    {:token ""
-                    :host "aria.mkn.io"
+                    :host "localhost"
                     :port 6800
                     :secure? false
                     :path "/jsonrpc"})
