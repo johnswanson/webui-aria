@@ -2,3 +2,4 @@ Just messing around to build a web-UI over [aria's RPC interface](http://aria2.s
 
 Mostly a way to play around with re-frame, reagent, and websockets. :)
 
+![Preview](https://blog.mkn.io/img/aria.png)
