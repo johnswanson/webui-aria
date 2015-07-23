@@ -55,7 +55,8 @@
               :border-radius (str width "px")
               :position      "relative"
               :cursor        "pointer"}
-      :on-click #(on-change (not @model))}
+      :on-click #(if (= (.-nodeName (.-target %)) "DIV")
+                   (on-change (not @model)))}
      [com/checkbox
       :model model
       :on-change on-change
