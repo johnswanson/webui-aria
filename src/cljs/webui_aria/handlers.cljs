@@ -117,7 +117,6 @@
    (api/disconnect!)
    (dissoc db :downloads)))
 
-
 (re-frame/register-handler
  :api-bad-msg-received
  [re-frame/trim-v]
