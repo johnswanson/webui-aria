@@ -22,6 +22,7 @@
        :children [[com/v-box :children [[com/label :label (name kw)]] :justify :center]
                   [com/gap :size "1"]
                   [com/input-text
+                   :style {:border-radius "0px"}
                    :attr {:on-key-down on-key-down}
                    :model val
                    :validation-regex regex
