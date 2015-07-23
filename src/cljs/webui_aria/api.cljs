@@ -41,7 +41,7 @@
   (let [id         (new-id)
         as         (assoc args :id id :secret (when-not (= method :multicall)
                                                 ;; treated specially
-                                                (config :secret)))
+                                                (str "token:" (config :token))))
         [method-str order] (method-info method)]
     (assoc base-call-data
            :id id
